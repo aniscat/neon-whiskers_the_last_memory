@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Neon Whiskers: The Last Memory</title>
+    <meta
+      name="description"
+      content="Un gato cibernético llamado NOVA-7 despierta sin recuerdos en una ciudad que se apaga."
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: #05060d;
+        overflow: hidden;
+        font-family: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
+      }
+      #game {
+        width: 100vw;
+        height: 100vh;
+      }
+      #game canvas {
+        display: block;
+        image-rendering: pixelated;
+      }
+      #boot-error {
+        display: none;
+        position: fixed;
+        inset: 0;
+        padding: 2rem;
+        color: #ff5d8f;
+        background: #05060d;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game"></div>
+    <pre id="boot-error"></pre>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

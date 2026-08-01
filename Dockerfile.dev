@@ -1,0 +1,18 @@
+# syntax=docker/dockerfile:1
+
+# Imagen de desarrollo: Vite con recarga en caliente y el servidor del agente en
+# modo watch. El código se monta como volumen desde docker-compose, así que aquí
+# solo se instalan las dependencias.
+
+ARG NODE_VERSION=24-alpine
+FROM node:${NODE_VERSION}
+
+WORKDIR /app
+ENV NODE_ENV=development
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+EXPOSE 5173 8787
+
+CMD ["npm", "run", "dev"]

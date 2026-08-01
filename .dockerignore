@@ -1,0 +1,19 @@
+node_modules
+dist
+.git
+.env
+.env.local
+.devin
+server/.data
+
+# Los assets se regeneran dentro de la imagen con `npm run assets`.
+public/assets
+
+# Basura de macOS que viene en los packs de sprites.
+**/__MACOSX
+**/.DS_Store
+**/*.zip
+
+Dockerfile*
+docker-compose*.yml
+*.md

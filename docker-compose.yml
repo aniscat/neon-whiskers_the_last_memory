@@ -1,0 +1,56 @@
+name: neon-whiskers
+
+services:
+  # Juego completo ya compilado: Express sirve el cliente y el agente.
+  # Uso:  docker compose up --build game   ->  http://localhost:8080
+  game:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: neon-whiskers:latest
+    ports:
+      - '8080:8787'
+    environment:
+      PORT: 8787
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      AGENT_MAX_STEPS: ${AGENT_MAX_STEPS:-6}
+      AGENT_TIMEOUT_MS: ${AGENT_TIMEOUT_MS:-25000}
+    volumes:
+      # Persiste la memoria de conversación del agente entre reinicios.
+      - agent-data:/app/server/.data
+    restart: unless-stopped
+
+  # Entorno de desarrollo con recarga en caliente.
+  # Uso:  docker compose --profile dev up dev   ->  http://localhost:5173
+  dev:
+    profiles: ['dev']
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - '5173:5173'
+      - '8787:8787'
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+    volumes:
+      - ./src:/app/src
+      - ./shared:/app/shared
+      - ./server:/app/server
+      - ./scripts:/app/scripts
+      - ./public:/app/public
+      - ./tests:/app/tests
+      - ./index.html:/app/index.html
+      - ./vite.config.ts:/app/vite.config.ts
+      - ./vitest.config.ts:/app/vitest.config.ts
+      - ./tsconfig.json:/app/tsconfig.json
+      # Packs de sprites originales, solo lectura: `npm run assets` los copia.
+      - ./AllCatsDemo:/app/AllCatsDemo:ro
+      - ./CatMaterialsDEMO:/app/CatMaterialsDEMO:ro
+      # `node_modules` se queda dentro del contenedor (binarios de Linux).
+      - /app/node_modules
+    command: sh -c "npm run assets && npm run dev"
+
+volumes:
+  agent-data:

@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.env
+.env.local
+*.local
+
+# Assets generados por `npm run assets` desde los packs originales.
+public/assets/
+
+# Memoria de conversaciones del agente en desarrollo.
+server/.data/
+
+# Artefactos de las herramientas de depuración en navegador.
+.playwright-mcp/
+
+# Basura de macOS que viene en los packs.
+.DS_Store
+__MACOSX/
