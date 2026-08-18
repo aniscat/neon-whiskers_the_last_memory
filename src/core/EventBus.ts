@@ -10,6 +10,8 @@ export interface GameEvents {
   'ability:granted': [AbilityId];
   'fragment:collected': [string];
   'corruption:changed': [number];
+  'integrity:changed': [number];
+  'player:respawned': [];
   'hint:shown': [string];
   'puzzle:solved': [ZoneId];
   'npc:emotion': [NpcId, Emotion];

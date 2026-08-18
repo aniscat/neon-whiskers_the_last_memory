@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { DEBUG, GAME_HEIGHT, SCENES } from '@/core/constants';
+import { applyRenderScale } from '@/core/renderScale';
+import { DEBUG, SCENES } from '@/core/constants';
 import { GameState } from '@/core/GameState';
 import { SaveSystem } from '@/core/SaveSystem';
 import { EventBus } from '@/core/EventBus';
@@ -40,6 +41,20 @@ export class GameScene extends Phaser.Scene {
   private nearbyDoor?: HackDoor;
   private dialogueOpen = false;
   private transitioning = false;
+  /** Último punto firme; ahí reaparece Nova en vez de al inicio del nivel. */
+  private checkpoint = new Phaser.Math.Vector2();
+  private lastCheckpointAt = 0;
+  /** Evita disparar la muerte por caída varias veces en el mismo descenso. */
+  private falling = false;
+  /** Muertes seguidas: si se acumulan, el checkpoint es una trampa y se descarta. */
+  private recentDeaths = 0;
+  private lastDeathAt = 0;
+  /** Puntos de retorno derivados del nivel: solo superficies estáticas y seguras. */
+  private safeSpots: Phaser.Math.Vector2[] = [];
+  /** true si Nova va montada en una plataforma móvil (no se guarda checkpoint). */
+  private riding = false;
+  /** Instante hasta el que NO se puede morir de ningún modo tras un respawn. */
+  private respawnImmunityUntil = 0;
 
   constructor() {
     super(SCENES.game);
@@ -53,9 +68,19 @@ export class GameScene extends Phaser.Scene {
     this.nearbyDoor = undefined;
     this.dialogueOpen = false;
     this.transitioning = false;
+    this.falling = false;
+    this.riding = false;
+    this.recentDeaths = 0;
+    this.lastDeathAt = 0;
+    this.lastCheckpointAt = 0;
+    this.respawnImmunityUntil = 0;
+    this.checkpoint.set(this.def.spawn.x, this.def.spawn.y);
+    // Cada zona empieza con el collar entero.
+    GameState.restoreIntegrity();
   }
 
   create() {
+    applyRenderScale(this);
     this.background = new NeonCityBackground(this, this.def.id);
     this.rain = new RainSystem(this);
     this.rain.setIntensity(this.def.rain.intensity);
@@ -63,6 +88,8 @@ export class GameScene extends Phaser.Scene {
 
     this.level = buildLevel(this, this.def);
     this.holoGroup = this.physics.add.staticGroup();
+    // Necesita los peligros ya construidos para descartar los puntos expuestos.
+    this.buildSafeSpots();
 
     this.player = new Player(this, this.def.spawn.x, this.def.spawn.y);
     this.player.setHoloGroup(this.holoGroup);
@@ -133,11 +160,20 @@ export class GameScene extends Phaser.Scene {
         if (!hazard.isEnabled) return;
         // El dash atraviesa los láseres: es su utilidad de diseño.
         if (hazard.kind === 'laser' && p.state === 'dash') return;
-        this.damage(hazard.x);
+        // El agua y las púas devuelven a Nova de inmediato: quedarse de pie sobre
+        // unos pinchos recibiendo golpes uno a uno se sentía roto. Las prensas y
+        // los láseres sí son solo daño, porque se pueden atravesar y esquivar.
+        const mortal = hazard.kind === 'water' || hazard.kind === 'spike';
+        this.damage(hazard.x, mortal);
       });
     }
 
     for (const enemy of this.level.enemies) {
+      // Los gatos de pandilla tienen gravedad: sin esto atravesaban el suelo y
+      // desaparecían del nivel al empezar.
+      if (enemy.kind === 'gang') {
+        this.physics.add.collider(enemy, this.level.solids);
+      }
       this.physics.add.overlap(p, enemy, () => {
         if (GameState.corrupcion > 0.6) return; // los enemigos solo observan
         this.damage(enemy.x);
@@ -181,7 +217,12 @@ export class GameScene extends Phaser.Scene {
     EventBus.on('dialogue:closed', onDialogueClosed);
 
     const onDissolve = (npcId: Parameters<typeof GameState.dissolveNpc>[0]) => {
-      this.level.npcs.find((n) => n.npcId === npcId)?.dissolve();
+      const npc = this.level.npcs.find((n) => n.npcId === npcId);
+      if (!npc) return;
+      // Sacarlo de la lista antes de destruirlo: `updateProximity` lo recorre en
+      // cada frame y tocaría un objeto ya destruido.
+      this.level.npcs = this.level.npcs.filter((n) => n !== npc);
+      npc.dissolve();
     };
     EventBus.on('npc:dissolve', onDissolve);
 
@@ -230,6 +271,7 @@ export class GameScene extends Phaser.Scene {
     this.updateWallContact();
     this.updateProximity();
     this.updateTips();
+    this.updateCheckpoint(time);
     this.checkFall();
   }
 
@@ -247,6 +289,7 @@ export class GameScene extends Phaser.Scene {
 
   /** Arrastra a Nova con la plataforma móvil sobre la que va montada. */
   private carryOnPlatform() {
+    this.riding = false;
     if (!this.player.onGround) return;
 
     for (const platform of this.level.movingPlatforms) {
@@ -256,6 +299,7 @@ export class GameScene extends Phaser.Scene {
       if (overlapX && onTop) {
         this.player.x += platform.deltaX;
         this.player.y += platform.deltaY;
+        this.riding = true;
       }
     }
   }
@@ -307,26 +351,166 @@ export class GameScene extends Phaser.Scene {
     this.scene.launch(SCENES.dialogue, { npcId: npc.npcId });
   }
 
-  /** Caer fuera del mundo mata igual que un peligro. */
+  /**
+   * Caer por debajo del mundo es mortal: resta integridad y reconstruye a Nova en
+   * el último punto seguro. Antes esto no ocurría nunca porque el jugador chocaba
+   * con el borde inferior del mundo y se quedaba atrapado ahí.
+   */
   private checkFall() {
-    if (this.player.y < this.def.height + GAME_HEIGHT) return;
+    if (this.falling || this.player.y < this.def.height + 40) return;
+    if (this.time.now < this.respawnImmunityUntil) return;
+    this.falling = true;
     this.damage(this.player.x, true);
   }
 
+  /**
+   * Calcula de antemano los puntos de retorno válidos a partir de la definición de
+   * la zona: solo encima de plataformas ESTÁTICAS y del suelo, y lejos de peligros.
+   *
+   * Derivarlos del nivel en vez de la posición observada del jugador es lo que
+   * evita los dos bucles de muerte que aparecieron: reaparecer sobre las púas del
+   * nivel 1 (que se apoyan en el suelo, así que "estar en el suelo" no bastaba) y
+   * reaparecer en el aire en el nivel 2, donde el punto guardado era una plataforma
+   * móvil que ya se había marchado.
+   */
+  private buildSafeSpots() {
+    this.safeSpots = [];
+
+    // El cuerpo mide 14 px y su base está en `y + 14`; 15 lo deja justo encima.
+    const add = (x: number, surfaceTop: number) => {
+      const y = surfaceTop - 15;
+      if (this.isSafeSpot(x, y)) this.safeSpots.push(new Phaser.Math.Vector2(x, y));
+    };
+
+    if (this.def.floor) {
+      for (let x = 30; x < this.def.width; x += 100) add(x, this.def.height - 16);
+    }
+
+    for (const p of this.def.platforms) {
+      // Las móviles no sirven: no están donde estaban al guardar el punto.
+      if (p.move) continue;
+      const puntos = Math.max(1, Math.round(p.w / 90));
+      for (let i = 0; i < puntos; i++) add(p.x + (p.w * (i + 0.5)) / puntos, p.y);
+    }
+  }
+
+  /** Punto de retorno válido más cercano, o undefined si no hay ninguno en rango. */
+  private nearestSafeSpot(x: number, y: number, radius: number) {
+    let mejor: Phaser.Math.Vector2 | undefined;
+    let mejorDist = radius;
+
+    for (const spot of this.safeSpots) {
+      const d = Phaser.Math.Distance.Between(x, y, spot.x, spot.y);
+      if (d < mejorDist) {
+        mejorDist = d;
+        mejor = spot;
+      }
+    }
+    return mejor;
+  }
+
+  /**
+   * Fija el checkpoint al punto de retorno válido más próximo mientras Nova esté
+   * quieta en el suelo. Nunca guarda su posición exacta.
+   */
+  private updateCheckpoint(time: number) {
+    if (time - this.lastCheckpointAt < 400) return;
+    if (!this.player.onGround || this.riding || this.player.flipped) return;
+    if (Math.abs(this.player.body!.velocity.y) > 10) return;
+
+    const spot = this.nearestSafeSpot(this.player.x, this.player.y, 70);
+    if (!spot) return;
+
+    this.lastCheckpointAt = time;
+    this.checkpoint.copy(spot);
+  }
+
+  /** ¿Este punto está lejos de todo peligro? Con margen, para no reaparecer pegado. */
+  private isSafeSpot(x: number, y: number) {
+    const margin = 20;
+    const zona = new Phaser.Geom.Rectangle(x - 10, y - 16, 20, 30);
+
+    for (const hazard of this.level.hazards) {
+      // Los peligros cíclicos cuentan aunque ahora estén apagados: volverán.
+      const b = hazard.getBounds();
+      const inflado = new Phaser.Geom.Rectangle(
+        b.x - margin,
+        b.y - margin,
+        b.width + margin * 2,
+        b.height + margin * 2,
+      );
+      if (Phaser.Geom.Rectangle.Overlaps(inflado, zona)) return false;
+    }
+    return true;
+  }
+
   private damage(fromX: number, fatal = false) {
-    if (fatal) {
-      this.respawn();
+    // Inmunidad absoluta tras un respawn: ni los peligros mortales ni la caída
+    // pueden matar a Nova hasta que se agote la ventana. Es la salvaguarda
+    // definitiva contra el bucle de muerte en zonas sin suelo.
+    if (this.time.now < this.respawnImmunityUntil) return;
+    if (!fatal && this.player.isInvulnerable) return;
+
+    const sinIntegridad = GameState.damage(fatal ? 2 : 1);
+    if (fatal || sinIntegridad) {
+      this.respawn(sinIntegridad);
       return;
     }
     this.player.hurt(fromX);
   }
 
-  private respawn() {
+  /** `reconstruida` indica que la integridad llegó a cero y se restaura entera. */
+  private respawn(reconstruida: boolean) {
     EventBus.emit('player:died');
-    this.cameras.main.flash(200, 255, 47, 109);
-    this.player.setPosition(this.def.spawn.x, this.def.spawn.y);
-    this.player.setVelocity(0, 0);
+    // Sin esta comprobación, varias muertes seguidas reiniciaban el flash una y
+    // otra vez y la pantalla se quedaba permanentemente roja.
+    const cam = this.cameras.main;
+    if (!cam.flashEffect.isRunning) {
+      cam.flash(200, 255, 47, 109);
+      cam.shake(180, 0.008);
+    }
+
+    const destino = this.chooseRespawnPoint();
+    // `body.reset` reposiciona sprite + cuerpo y limpia los flags de colisión
+    // del frame anterior. Sin esto el motor puede conservar un overlap caduco
+    // que dispara un daño inmediato al reaparecer y genera un bucle de muerte.
+    (this.player.body as Phaser.Physics.Arcade.Body).reset(destino.x, destino.y);
     this.player.flipped = false;
+    this.player.revive();
+    // Inmunidad absoluta durante 1.5 s: corta cualquier bucle de muerte de raíz.
+    this.respawnImmunityUntil = this.time.now + 1500;
+    this.player.grantGrace(1500);
+    this.falling = false;
+
+    if (reconstruida) {
+      GameState.restoreIntegrity();
+      EventBus.emit('toast', 'COLLAR RECONSTRUIDO');
+    }
+    EventBus.emit('player:respawned');
+    SaveSystem.save();
+  }
+
+  /**
+   * Elige dónde reaparecer, con dos salvaguardas contra los bucles de muerte:
+   * si el checkpoint dejó de ser seguro se descarta, y si Nova muere varias veces
+   * seguidas en pocos segundos se la devuelve al inicio de la zona.
+   */
+  private chooseRespawnPoint(): Phaser.Math.Vector2 {
+    const ahora = this.time.now;
+    this.recentDeaths = ahora - this.lastDeathAt < 3000 ? this.recentDeaths + 1 : 1;
+    this.lastDeathAt = ahora;
+
+    const seguro = this.isSafeSpot(this.checkpoint.x, this.checkpoint.y);
+    if (this.recentDeaths >= 3 || !seguro) {
+      this.recentDeaths = 0;
+      // Al inicio de la zona, pero apoyada en una superficie estática de verdad.
+      const inicio =
+        this.nearestSafeSpot(this.def.spawn.x, this.def.spawn.y, 260) ??
+        new Phaser.Math.Vector2(this.def.spawn.x, this.def.spawn.y);
+      this.checkpoint.copy(inicio);
+      EventBus.emit('toast', 'VOLVIENDO AL INICIO DEL SECTOR');
+    }
+    return this.checkpoint;
   }
 
   private collectFragment(id: string) {

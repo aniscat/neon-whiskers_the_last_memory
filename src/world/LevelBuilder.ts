@@ -36,6 +36,7 @@ export interface BuiltLevel {
   hazards: Hazard[];
   fragments: MemoryFragmentPickup[];
   pickups: AbilityPickup[];
+  /** Mutable: los gatos que se despiden se quitan de la lista al disolverse. */
   npcs: NpcCat[];
   enemies: Enemy[];
   doors: HackDoor[];
@@ -56,6 +57,9 @@ const SOLID_TEXTURE = 'fx:solid';
 export function buildLevel(scene: Phaser.Scene, def: ZoneDefinition): BuiltLevel {
   ensureSolidTexture(scene);
   scene.physics.world.setBounds(0, 0, def.width, def.height);
+  // Sin colisión en el borde inferior: si no, el jugador aterriza en un suelo
+  // invisible y en las zonas sin suelo (z2) se queda atrapado para siempre.
+  scene.physics.world.setBoundsCollision(true, true, true, false);
 
   const painter = new PlatformPainter(scene, -10);
   const solids = scene.physics.add.staticGroup();

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { applyRenderScale } from '@/core/renderScale';
 import { GAME_HEIGHT, GAME_WIDTH, PALETTE, SCENES } from '@/core/constants';
 import { GameState } from '@/core/GameState';
 import { EventBus } from '@/core/EventBus';
@@ -26,8 +27,19 @@ const OBJETIVOS = [
   'Llega a la Torre de la Memoria atravesando siete distritos.',
   'Cada distrito te da una habilidad nueva y te deja pasar al siguiente.',
   'Recoge los rombos de datos: son fragmentos de memoria.',
-  'Habla con los gatos. No tienen guion: te responden de verdad,',
-  'y pueden darte pistas, recuerdos o desaparecer para siempre.',
+  'El COLLAR es tu vida: al vaciarse reapareces en el último punto seguro.',
+  'Caer al vacío o al agua resta dos segmentos de golpe.',
+];
+
+/** Explicación de la parte de IA, que no es obvia si no se cuenta. */
+const IA = [
+  'En cada distrito hay un gato con un aura de color. Acércate y pulsa E.',
+  'Se abre un chat: ESCRIBE lo que quieras y te contesta en personaje.',
+  'No hay diálogos pregrabados. Un modelo de lenguaje decide qué responder,',
+  'y puede usar herramientas: darte un fragmento, revelarte una pista del',
+  'acertijo, cambiar de humor, corromper la realidad o despedirse para',
+  'siempre. Recuerda lo que hablasteis en encuentros anteriores.',
+  'Si no quieres escribir, pulsa 1, 2 o 3 para preguntas rápidas.',
 ];
 
 /**
@@ -43,6 +55,7 @@ export class HowToPlayScene extends Phaser.Scene {
   }
 
   create(data: HowToPlaySceneData) {
+    applyRenderScale(this);
     this.overlay = Boolean(data?.overlay);
 
     this.add
@@ -54,9 +67,10 @@ export class HowToPlayScene extends Phaser.Scene {
 
     neonLabel(this, GAME_WIDTH / 2, 14, 'CÓMO JUGAR', 'small', '#3fe0d0').setOrigin(0.5, 0);
 
-    this.drawObjectives(26);
-    const y = this.drawBasics(76);
-    this.drawAbilities(y + 6);
+    const yObjetivos = this.drawObjectives(26);
+    const yIA = this.drawAI(yObjetivos + 4);
+    const yControles = this.drawBasics(yIA + 4);
+    this.drawAbilities(yControles + 4);
 
     const hint = label(
       this,
@@ -87,8 +101,44 @@ export class HowToPlayScene extends Phaser.Scene {
   private drawObjectives(top: number) {
     label(this, 18, top, 'QUÉ TIENES QUE HACER', 'micro', '#ff2f6d');
     OBJETIVOS.forEach((line, i) => {
-      label(this, 18, top + 11 + i * 8, line, 'micro', '#a8b8e8');
+      label(this, 18, top + 10 + i * 8, line, 'micro', '#a8b8e8');
     });
+    return top + 10 + OBJETIVOS.length * 8;
+  }
+
+  /**
+   * Sección de la IA. Consulta `/api/health` para avisar si el agente está en modo
+   * de reserva: sin `GEMINI_API_KEY` los gatos usan diálogos escritos a mano y el
+   * jugador no tendría forma de saberlo.
+   */
+  private drawAI(top: number) {
+    label(this, 18, top, 'HABLAR CON LA IA', 'micro', '#3fe0d0');
+    IA.forEach((line, i) => {
+      label(this, 18, top + 10 + i * 8, line, 'micro', '#a8b8e8');
+    });
+
+    const bottom = top + 10 + IA.length * 8;
+    const estado = label(this, 18, bottom, 'comprobando el agente...', 'micro', '#3a4770');
+
+    void fetch('/api/health')
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('sin servidor'))))
+      .then((data: { agente?: string; model?: string }) => {
+        if (!estado.active) return;
+        const online = data.agente === 'gemini';
+        estado
+          .setText(
+            online
+              ? `AGENTE ACTIVO (${data.model}) — los gatos improvisan`
+              : 'AGENTE EN RESERVA — falta GEMINI_API_KEY, diálogos escritos a mano',
+          )
+          .setColor(online ? '#7dff9b' : '#ffb347');
+      })
+      .catch(() => {
+        if (!estado.active) return;
+        estado.setText('SERVIDOR NO DISPONIBLE — diálogos locales').setColor('#ff4d6d');
+      });
+
+    return bottom + 8;
   }
 
   /** Devuelve la coordenada Y donde termina el bloque. */
@@ -96,11 +146,14 @@ export class HowToPlayScene extends Phaser.Scene {
     label(this, 18, top, 'CONTROLES', 'micro', '#ff2f6d');
 
     BASICS.forEach(([key, desc], i) => {
-      const y = top + 11 + i * 9;
-      label(this, 18, y, key, 'micro', '#ffb347');
-      label(this, 76, y, desc, 'micro', '#d7e3ff');
+      // Dos columnas, para que quepan sin alargar el panel.
+      const col = i % 2;
+      const row = Math.floor(i / 2);
+      const y = top + 10 + row * 8;
+      label(this, 18 + col * 220, y, key, 'micro', '#ffb347');
+      label(this, 66 + col * 220, y, desc, 'micro', '#d7e3ff');
     });
-    return top + 11 + BASICS.length * 9;
+    return top + 10 + Math.ceil(BASICS.length / 2) * 8;
   }
 
   /** Solo las habilidades ya conseguidas. */
@@ -122,9 +175,10 @@ export class HowToPlayScene extends Phaser.Scene {
 
     owned.forEach((id, i) => {
       const spec = ABILITIES[id];
-      const y = top + 11 + i * 9;
-      label(this, 18, y, spec.tecla, 'micro', hex(spec.color));
-      label(this, 96, y, `${spec.glifo}  ${spec.nombre}`, 'micro', '#d7e3ff');
+      const col = i % 2;
+      const y = top + 10 + Math.floor(i / 2) * 8;
+      label(this, 18 + col * 220, y, spec.tecla, 'micro', hex(spec.color));
+      label(this, 96 + col * 220, y, `${spec.glifo} ${spec.nombre}`, 'micro', '#d7e3ff');
     });
   }
 

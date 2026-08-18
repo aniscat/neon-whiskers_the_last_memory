@@ -1,30 +1,60 @@
 # Notas del proyecto
 
-## Comandos
+## TODO SE EJECUTA EN DOCKER
 
-```bash
-npm install
-npm run assets       # copia los sprites de AllCatsDemo/CatMaterialsDEMO a public/assets
-npm run dev          # Vite (:5173) + servidor del agente (:8787)
-npm run typecheck    # tsc --noEmit
-npm run test         # vitest (31 pruebas: bucle del agente, herramientas, lore y niveles)
-npm run build        # typecheck + build de producción a dist/
-```
-
+No instales Node, npm ni dependencias en la máquina del usuario. Todos los comandos van por
 Docker:
 
 ```bash
-docker compose up --build game            # producción, http://localhost:8080
-docker compose --profile dev up dev       # desarrollo con recarga, http://localhost:5173
-docker build --target build -t nw:test .  # imagen con devDependencies, para correr los tests
+# Juego completo (Express sirve el cliente y el agente) -> http://localhost:8080
+docker compose up -d --build game
+docker compose logs -f game
+docker compose down
+
+# Desarrollo con recarga en caliente -> http://localhost:5173
+docker compose --profile dev up dev
+
+# Herramientas: tests, typecheck, build. El --build recompila si cambió el código.
+docker compose --profile tools run --rm --build tools npm test
+docker compose --profile tools run --rm tools npm run typecheck
+docker compose --profile tools run --rm tools npx vitest run tests/geometry.test.ts
 ```
+
+Los scripts de `package.json` (`npm run dev`, `assets`, `typecheck`, `test`, `build`) existen para
+ejecutarse **dentro** del contenedor, no en el host.
+
+### El IDE marca errores falsos: es esperado
+
+No hay `node_modules` en el host, así que el servidor de TypeScript del editor no encuentra las
+declaraciones de tipos y muestra cosas como:
+
+```
+Cannot find module 'phaser' or its corresponding type declarations.
+Property 'cameras' does not exist on type 'TowerBossScene'.
+Parameter '_p' implicitly has an 'any' type.
+```
+
+**Todos son falsos positivos en cascada del primero.** Sin los tipos de Phaser, `extends
+Phaser.Scene` se queda sin tipo y de ahí salen los demás. La única verdad sobre los tipos es:
+
+```bash
+docker compose --profile tools run --rm --build tools npm run typecheck
+```
+
+Si ese comando pasa, el código está bien. No "arregles" estos avisos añadiendo `any`, castings o
+`@ts-ignore`: romperías el tipado real que sí se comprueba en el contenedor.
+
+(Decisión del usuario: se prefiere convivir con los avisos antes que tener dependencias en el host.
+Si algún día se quieren recuperar los tipos sin instalar nada, se pueden extraer del contenedor con
+`docker cp`.)
 
 ## Verificación antes de dar algo por terminado
 
-1. `npm run typecheck`
-2. `npm run test`
-3. `npm run build`
-4. Smoke test en navegador: menú → nueva partida → ESC en la intro → moverse → hablar con un gato.
+1. `docker compose --profile tools run --rm --build tools npm run typecheck`
+2. `docker compose --profile tools run --rm tools npm test` (63 pruebas)
+3. `docker compose up -d --build game` y comprobar `/api/health`
+4. Smoke test en navegador: menú → nueva partida → ESC en la intro → moverse → saltar → hablar
+   con un gato → caerse al vacío y ver que el collar baja y Nova reaparece.
 5. Confirmar que la clave no está en el bundle: `docker run --rm neon-whiskers:latest sh -c "grep -rl GEMINI /app/dist"` no debe devolver nada.
 
 ## Decisiones que conviene no deshacer
@@ -48,6 +78,23 @@ docker build --target build -t nw:test .  # imagen con devDependencies, para cor
 - **La geometría de los niveles se valida en `tests/geometry.test.ts`** contra las cotas de
   `src/core/physics.ts`. Si cambias `RUN_SPEED` o `JUMP_VELOCITY`, los tests dirán qué zonas se
   rompen. Una plataforma que solo se alcance con una habilidad debe declararlo con `reachedWith`.
+- **El canvas mide `GAME_WIDTH * RENDER_SCALE` y cada cámara usa ese zoom.** Toda escena visible
+  DEBE llamar a `applyRenderScale(this)` al principio de `create()`, o se dibujará al doble de
+  tamaño y descuadrada. Es lo que permite que el texto se vea nítido: `ui/text.ts` pide la fuente
+  al doble de tamaño y la dibuja a mitad de escala, quedando 1:1 con los píxeles reales.
+- **Los anchos de `setWordWrapWidth` y `setLineSpacing` van multiplicados por `RENDER_SCALE`**,
+  porque operan en el espacio interno del texto, que está escalado.
+- **El borde inferior del mundo no colisiona** (`setBoundsCollision(true, true, true, false)` en
+  `LevelBuilder`). Es lo que hace posible la muerte por caída; con la colisión activada el jugador
+  aterrizaba en un suelo invisible y en z2 (sin suelo) quedaba atrapado sin salida.
+- **La vida es `GameState.integridad`** (4 segmentos). Prensas, láseres y enemigos restan 1; caer al
+  vacío, al agua o sobre púas resta 2 y devuelve a Nova de inmediato. Al llegar a 0 se reconstruye
+  en el último checkpoint y se restaura entera; no hay pantalla de game over.
+- **Un checkpoint solo se guarda en un punto seguro** (`isSafeSpot`, 20 px de margen respecto a
+  cualquier peligro). Estar "en el suelo" NO basta: en z1 las púas se apoyan encima del suelo, así
+  que el checkpoint caía sobre ellas y se moría en bucle. Además, si se muere 3 veces en menos de
+  3 s, el checkpoint se descarta y se vuelve al inicio de la zona, y tras reaparecer hay 1,4 s de
+  invulnerabilidad (`Player.grantGrace`).
 
 ## Medidas reales de los sprites
 

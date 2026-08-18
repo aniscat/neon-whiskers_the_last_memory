@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH, PALETTE, SCENES } from '@/core/constants';
+import { applyRenderScale } from '@/core/renderScale';
+import { GAME_HEIGHT, GAME_WIDTH, PALETTE, SCENES, RENDER_SCALE } from '@/core/constants';
 import { GameState } from '@/core/GameState';
 import { SaveSystem } from '@/core/SaveSystem';
 import { EventBus } from '@/core/EventBus';
@@ -59,6 +60,7 @@ export class TowerBossScene extends Phaser.Scene {
   }
 
   create() {
+    applyRenderScale(this);
     GameState.enterZone('tower');
     const def = getZone('tower');
 
@@ -67,6 +69,8 @@ export class TowerBossScene extends Phaser.Scene {
     this.level = buildLevel(this, def);
 
     this.player = new Player(this, def.spawn.x, def.spawn.y);
+    // La arena es más alta que la pantalla, así que la cámara sigue a Nova.
+    this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
     this.setupInput();
     this.physics.add.collider(this.player, this.level.solids);
 
@@ -80,17 +84,22 @@ export class TowerBossScene extends Phaser.Scene {
     this.glitch = new GlitchOverlay(this);
     this.glitch.setIntensity(0.75);
 
-    label(this, GAME_WIDTH / 2, 8, 'NÚCLEO PRINCIPAL — MOTHER', 'micro', '#ff2f6d').setOrigin(
-      0.5,
-      0,
-    );
+    // La cámara sigue a Nova, así que la interfaz tiene que ir fija a pantalla.
+    label(this, GAME_WIDTH / 2, 8, 'NÚCLEO PRINCIPAL — MOTHER', 'micro', '#ff2f6d')
+      .setOrigin(0.5, 0)
+      .setScrollFactor(0)
+      .setDepth(40);
+
     this.hpMeter = new Meter(this, GAME_WIDTH / 2 - 60, 18, 120, 4, PALETTE.neonPink);
     this.hpMeter.setValue(1);
+    this.hpMeter.setScrollFactor(0).setDepth(40);
 
     this.lineText = label(this, GAME_WIDTH / 2, GAME_HEIGHT - 24, '', 'micro', '#d7e3ff')
       .setOrigin(0.5)
-      .setWordWrapWidth(GAME_WIDTH - 40)
-      .setAlign('center');
+      .setWordWrapWidth((GAME_WIDTH - 40) * RENDER_SCALE)
+      .setAlign('center')
+      .setScrollFactor(0)
+      .setDepth(40);
 
     this.startPhase(0);
     this.cameras.main.fadeIn(800, 0, 0, 0);

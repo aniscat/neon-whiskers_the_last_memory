@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH, SCENES } from '@/core/constants';
+import { applyRenderScale } from '@/core/renderScale';
+import { GAME_HEIGHT, GAME_WIDTH, SCENES, RENDER_SCALE } from '@/core/constants';
 import { GameState } from '@/core/GameState';
 import { MEMORY_FRAGMENTS } from '@shared/lore';
 import { label, neonLabel } from '@/ui/text';
-import { ProceduralMusic } from '@/audio/ProceduralMusic';
+import { Music, ProceduralMusic } from '@/audio/ProceduralMusic';
 
 export interface CreditsSceneData {
   fromMenu?: boolean;
@@ -37,11 +38,14 @@ export class CreditsScene extends Phaser.Scene {
   }
 
   create(data: CreditsSceneData) {
+    applyRenderScale(this);
     this.cameras.main.setBackgroundColor(0x05060d);
     this.cameras.main.fadeIn(1200, 0, 0, 0);
 
+    // Callar el tema del juego: si no, synthwave y piano suenan a la vez.
+    Music.stop();
     this.music = new ProceduralMusic();
-    this.music.playPianoTheme();
+    void this.music.resume().then(() => this.music?.playPianoTheme());
 
     const container = this.add.container(0, GAME_HEIGHT + 20);
 
@@ -73,7 +77,7 @@ export class CreditsScene extends Phaser.Scene {
         )
           .setOrigin(0.5)
           .setAlign('center')
-          .setLineSpacing(4),
+          .setLineSpacing(4 * RENDER_SCALE),
       );
       y += 40;
     }

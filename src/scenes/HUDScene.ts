@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH, PALETTE, SCENES } from '@/core/constants';
-import { GameState } from '@/core/GameState';
+import { applyRenderScale } from '@/core/renderScale';
+import { GAME_HEIGHT, GAME_WIDTH, PALETTE, SCENES, RENDER_SCALE } from '@/core/constants';
+import { GameState, MAX_INTEGRITY } from '@/core/GameState';
 import { EventBus } from '@/core/EventBus';
 import { ABILITIES, ABILITY_ORDER } from '@/abilities';
 import { MEMORY_FRAGMENTS, ZONES, getFragment } from '@shared/lore';
@@ -18,6 +19,7 @@ export class HUDScene extends Phaser.Scene {
   private fragmentLabel!: Phaser.GameObjects.Text;
   private corruption!: Meter;
   private abilityIcons = new Map<AbilityId, Phaser.GameObjects.Text>();
+  private integritySegments: Phaser.GameObjects.Rectangle[] = [];
   private toasts: Phaser.GameObjects.Text[] = [];
 
   constructor() {
@@ -25,15 +27,34 @@ export class HUDScene extends Phaser.Scene {
   }
 
   create() {
+    applyRenderScale(this);
     this.zoneLabel = label(this, 6, 5, '', 'micro', '#3fe0d0');
     this.fragmentLabel = label(this, 6, 14, '', 'micro', '#8b5cff');
 
     label(this, GAME_WIDTH - 6, 5, 'CORRUPCIÓN', 'micro', '#6f8bd0').setOrigin(1, 0);
-    this.corruption = new Meter(this, GAME_WIDTH - 62, 14, 56, 4, PALETTE.neonPink);
+    this.corruption = new Meter(this, GAME_WIDTH - 62, 16, 56, 4, PALETTE.neonPink);
+
+    this.buildIntegrity();
 
     this.buildAbilityBar();
     this.refresh();
     this.bindEvents();
+  }
+
+  /**
+   * Integridad del collar: cuatro segmentos. Es la "vida" de Nova. Al vaciarse,
+   * el collar se reconstruye en el último punto seguro (no hay game over).
+   */
+  private buildIntegrity() {
+    label(this, 6, 24, 'COLLAR', 'micro', '#6f8bd0');
+    for (let i = 0; i < MAX_INTEGRITY; i++) {
+      this.integritySegments.push(
+        this.add
+          .rectangle(44 + i * 9, 27, 7, 5, PALETTE.neonCyan, 1)
+          .setOrigin(0, 0.5)
+          .setBlendMode(Phaser.BlendModes.ADD),
+      );
+    }
   }
 
   /** Fila de iconos: apagados si la habilidad todavía no se tiene. */
@@ -51,11 +72,12 @@ export class HUDScene extends Phaser.Scene {
     const onAbility = (id: AbilityId) => this.announceAbility(id);
     const onFragment = (id: string) =>
       this.toast(`FRAGMENTO: ${getFragment(id)?.titulo ?? id}`);
-    const onDeath = () => this.toast('REINICIANDO SECTOR');
+    const onDeath = () => this.toast('SEÑAL PERDIDA — RECONSTRUYENDO');
     const onHint = (text: string) => this.toast(`PISTA: ${text}`, 5200);
 
     EventBus.on('state:changed', refresh);
     EventBus.on('corruption:changed', refresh);
+    EventBus.on('integrity:changed', refresh);
     EventBus.on('toast', onToast);
     EventBus.on('ability:granted', onAbility);
     EventBus.on('fragment:collected', onFragment);
@@ -65,6 +87,7 @@ export class HUDScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       EventBus.off('state:changed', refresh);
       EventBus.off('corruption:changed', refresh);
+      EventBus.off('integrity:changed', refresh);
       EventBus.off('toast', onToast);
       EventBus.off('ability:granted', onAbility);
       EventBus.off('fragment:collected', onFragment);
@@ -83,6 +106,11 @@ export class HUDScene extends Phaser.Scene {
     for (const [id, icon] of this.abilityIcons) {
       icon.setColor(GameState.has(id) ? hex(ABILITIES[id].color) : '#2a3358');
     }
+
+    this.integritySegments.forEach((segment, i) => {
+      const lleno = i < GameState.integridad;
+      segment.setFillStyle(lleno ? PALETTE.neonCyan : 0x24305c, lleno ? 1 : 0.5);
+    });
   }
 
   /** Aviso grande y centrado cuando se desbloquea una habilidad. */
@@ -97,7 +125,7 @@ export class HUDScene extends Phaser.Scene {
       hex(spec.color),
     )
       .setOrigin(0.5)
-      .setShadow(0, 0, hex(spec.color), 8, true, true);
+      .setShadow(0, 0, hex(spec.color), 8 * RENDER_SCALE, true, true);
 
     const detail = label(
       this,

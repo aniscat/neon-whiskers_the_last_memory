@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH, SCENES } from '@/core/constants';
+import { applyRenderScale } from '@/core/renderScale';
+import { GAME_HEIGHT, GAME_WIDTH, SCENES, RENDER_SCALE } from '@/core/constants';
 import { NeonCityBackground } from '@/world/art/NeonCityBackground';
 import { RainSystem } from '@/world/art/RainSystem';
 import { GameState } from '@/core/GameState';
@@ -25,6 +26,7 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   create() {
+    applyRenderScale(this);
     this.background = new NeonCityBackground(this, 'menu');
     new RainSystem(this).setIntensity(0.75);
 
@@ -35,7 +37,7 @@ export class MainMenuScene extends Phaser.Scene {
         color: '#3fe0d0',
       })
       .setOrigin(0.5)
-      .setShadow(0, 0, '#3fe0d0', 8, true, true);
+      .setShadow(0, 0, '#3fe0d0', 8 * RENDER_SCALE, true, true);
 
     this.add
       .text(GAME_WIDTH / 2, 74, 'THE LAST MEMORY', {

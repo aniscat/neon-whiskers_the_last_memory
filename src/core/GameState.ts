@@ -16,11 +16,15 @@ export interface SerializedState {
   fragmentos: string[];
   corrupcion: number;
   flags: StoryFlags;
+  integridad: number;
   /** Segundos jugados, para los créditos. */
   tiempo: number;
 }
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
+
+/** Integridad máxima del collar de NOVA-7. Cada golpe resta uno. */
+export const MAX_INTEGRITY = 4;
 
 /**
  * Estado global de la partida. Es la única fuente de verdad: el servidor del
@@ -32,6 +36,8 @@ class GameStateStore {
   fragmentos = new Set<string>();
   flags: StoryFlags = structuredClone(DEFAULT_FLAGS);
   tiempo = 0;
+  /** Integridad restante. Al llegar a 0, Nova se reconstruye en el último punto seguro. */
+  integridad = MAX_INTEGRITY;
 
   #corrupcion = 0;
 
@@ -59,6 +65,22 @@ class GameStateStore {
 
   has(ability: AbilityId) {
     return this.habilidades.has(ability);
+  }
+
+  /** Resta integridad. Devuelve true si Nova se ha quedado a cero. */
+  damage(amount = 1) {
+    this.integridad = Math.max(0, this.integridad - amount);
+    EventBus.emit('integrity:changed', this.integridad);
+    this.#touch();
+    return this.integridad === 0;
+  }
+
+  /** Restaura la integridad al reconstruirse o al cambiar de zona. */
+  restoreIntegrity() {
+    if (this.integridad === MAX_INTEGRITY) return;
+    this.integridad = MAX_INTEGRITY;
+    EventBus.emit('integrity:changed', this.integridad);
+    this.#touch();
   }
 
   grantAbility(ability: AbilityId) {
@@ -120,6 +142,7 @@ class GameStateStore {
       fragmentos: [...this.fragmentos],
       corrupcion: this.#corrupcion,
       flags: structuredClone(this.flags),
+      integridad: this.integridad,
       tiempo: this.tiempo,
     };
   }
@@ -130,6 +153,7 @@ class GameStateStore {
     this.fragmentos = new Set(data.fragmentos);
     this.flags = { ...structuredClone(DEFAULT_FLAGS), ...structuredClone(data.flags) };
     this.#corrupcion = data.corrupcion;
+    this.integridad = data.integridad ?? MAX_INTEGRITY;
     this.tiempo = data.tiempo;
     EventBus.emit('state:changed');
   }
@@ -140,6 +164,7 @@ class GameStateStore {
     this.fragmentos.clear();
     this.flags = structuredClone(DEFAULT_FLAGS);
     this.#corrupcion = 0;
+    this.integridad = MAX_INTEGRITY;
     this.tiempo = 0;
     EventBus.emit('state:changed');
   }

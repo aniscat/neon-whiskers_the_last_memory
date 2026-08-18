@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH, SCENES } from '@/core/constants';
+import { applyRenderScale } from '@/core/renderScale';
+import { GAME_HEIGHT, GAME_WIDTH, SCENES, RENDER_SCALE } from '@/core/constants';
 import { GameState } from '@/core/GameState';
 import { SaveSystem } from '@/core/SaveSystem';
 import { Typewriter } from '@/ui/Typewriter';
@@ -43,6 +44,7 @@ export class RevelationScene extends Phaser.Scene {
   }
 
   create() {
+    applyRenderScale(this);
     // Marcar la verdad revelada cambia cómo se leen todos los fragmentos.
     GameState.flags.verdadRevelada = true;
     SaveSystem.save();
@@ -58,8 +60,8 @@ export class RevelationScene extends Phaser.Scene {
     this.text = label(this, GAME_WIDTH / 2, 60, '', 'body', '#1a1030')
       .setOrigin(0.5, 0)
       .setAlign('center')
-      .setLineSpacing(4)
-      .setWordWrapWidth(GAME_WIDTH - 70);
+      .setLineSpacing(4 * RENDER_SCALE)
+      .setWordWrapWidth((GAME_WIDTH - 70) * RENDER_SCALE);
 
     this.typewriter = new Typewriter(this, this.text, {
       speed: 42,

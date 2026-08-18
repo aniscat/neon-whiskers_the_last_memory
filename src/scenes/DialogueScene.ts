@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { DEBUG, GAME_HEIGHT, GAME_WIDTH, PALETTE, SCENES } from '@/core/constants';
+import { applyRenderScale } from '@/core/renderScale';
+import { DEBUG, GAME_HEIGHT, GAME_WIDTH, PALETTE, SCENES, RENDER_SCALE } from '@/core/constants';
 import { EventBus } from '@/core/EventBus';
 import { drawPanel } from '@/ui/Panel';
 import { Typewriter } from '@/ui/Typewriter';
@@ -50,6 +51,7 @@ export class DialogueScene extends Phaser.Scene {
   }
 
   create(data: DialogueSceneData) {
+    applyRenderScale(this);
     this.npcId = data.npcId;
     const info = NPCS[this.npcId];
     const accent = info.color;
@@ -75,8 +77,8 @@ export class DialogueScene extends Phaser.Scene {
     this.statusText = label(this, x + w - 8, y + 6, '', 'micro', '#6f8bd0').setOrigin(1, 0);
 
     this.replyText = label(this, x + 40, y + 18, '', 'micro', '#d7e3ff')
-      .setWordWrapWidth(w - 50)
-      .setLineSpacing(3);
+      .setWordWrapWidth((w - 50) * RENDER_SCALE)
+      .setLineSpacing(3 * RENDER_SCALE);
 
     this.typewriter = new Typewriter(this, this.replyText, { speed: 22 });
     this.typewriter.start(info.saludo);

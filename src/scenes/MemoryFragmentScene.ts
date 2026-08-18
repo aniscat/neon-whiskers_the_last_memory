@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH, PALETTE, SCENES } from '@/core/constants';
+import { applyRenderScale } from '@/core/renderScale';
+import { GAME_HEIGHT, GAME_WIDTH, PALETTE, SCENES, RENDER_SCALE } from '@/core/constants';
 import { GameState } from '@/core/GameState';
 import { EventBus } from '@/core/EventBus';
 import { getFragment } from '@shared/lore';
@@ -24,6 +25,7 @@ export class MemoryFragmentScene extends Phaser.Scene {
   }
 
   create(data: MemoryFragmentSceneData) {
+    applyRenderScale(this);
     const fragment = getFragment(data.fragmentId);
     if (!fragment) {
       this.close();
@@ -45,8 +47,8 @@ export class MemoryFragmentScene extends Phaser.Scene {
     label(this, x + 8, y + 18, fragment.titulo.toUpperCase(), 'small', '#d7e3ff');
 
     const body = label(this, x + 8, y + 34, '', 'micro', '#a8b8e8')
-      .setWordWrapWidth(w - 16)
-      .setLineSpacing(3);
+      .setWordWrapWidth((w - 16) * RENDER_SCALE)
+      .setLineSpacing(3 * RENDER_SCALE);
 
     this.typewriter = new Typewriter(this, body, { speed: 18, punctuationPause: 140 });
     this.typewriter.start(fragment.texto);
@@ -54,8 +56,8 @@ export class MemoryFragmentScene extends Phaser.Scene {
     // Tras el giro, cada fragmento revela su segunda capa.
     if (GameState.flags.verdadRevelada) {
       const truth = label(this, x + 8, y + h - 34, '', 'micro', '#ff8bb0')
-        .setWordWrapWidth(w - 16)
-        .setLineSpacing(3);
+        .setWordWrapWidth((w - 16) * RENDER_SCALE)
+        .setLineSpacing(3 * RENDER_SCALE);
       this.time.delayedCall(900, () => {
         new Typewriter(this, truth, { speed: 22 }).start(fragment.verdad);
       });

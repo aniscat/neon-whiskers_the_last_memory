@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { applyRenderScale } from '@/core/renderScale';
 import { DEBUG, GAME_HEIGHT, GAME_WIDTH, PALETTE, SCENES } from '@/core/constants';
 import {
   auditSheets,
@@ -29,6 +30,7 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   create() {
+    applyRenderScale(this);
     createAllCatAnimations(this);
     createPropAnimations(this);
 

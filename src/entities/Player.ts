@@ -27,6 +27,8 @@ const CLIMB_SPEED = 70;
 const COYOTE_MS = 90;
 const JUMP_BUFFER_MS = 110;
 const HURT_MS = 450;
+/** Gracia extra tras el golpe, ya recuperado el control. */
+const INVULNERABLE_MS = 700;
 const HOLO_LIFETIME_MS = 2600;
 
 export interface PlayerKeys {
@@ -62,6 +64,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private dashEndsAt = 0;
   private dashReadyAt = 0;
   private hurtUntil = 0;
+  private graceUntil = 0;
   private touchingWall: -1 | 0 | 1 = 0;
   private trail?: Phaser.GameObjects.Particles.ParticleEmitter;
   private keys!: PlayerKeys;
@@ -78,6 +81,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setSize(14, 14).setOffset((CAT_FRAME - 14) / 2, CAT_FRAME - 16);
     this.arcadeBody.gravity.y = 0;
     this.setMaxVelocity(DASH_SPEED, 620);
+    // Choca con los lados y el techo. El borde inferior se desactiva a nivel de
+    // mundo en `LevelBuilder` (setBoundsCollision), para que caerse sea posible.
     this.setCollideWorldBounds(true);
     this.play(animKey(PLAYER_SPRITE, ANIM.idle));
 
@@ -374,9 +379,47 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       .explode(10);
   }
 
+  /**
+   * Ventana de gracia tras recibir un golpe: evita perder toda la integridad de
+   * golpe cuando se cae encima de unos pinchos o un enemigo.
+   */
+  get isInvulnerable() {
+    const now = this.scene.time.now;
+    return now < this.hurtUntil + INVULNERABLE_MS || now < this.graceUntil;
+  }
+
+  /**
+   * Invulnerabilidad temporal sin el estado de "herida", para justo después de
+   * reaparecer: da tiempo a apartarse si el punto de retorno está cerca de un
+   * peligro, en vez de encadenar muertes.
+   */
+  grantGrace(ms: number) {
+    this.graceUntil = this.scene.time.now + ms;
+    this.scene.tweens.killTweensOf(this);
+    this.scene.tweens.add({
+      targets: this,
+      alpha: { from: 0.3, to: 1 },
+      duration: 160,
+      yoyo: true,
+      repeat: Math.floor(ms / 320),
+      onComplete: () => this.setAlpha(1),
+    });
+  }
+
+  /** Devuelve el control tras reaparecer. */
+  revive() {
+    this.hurtUntil = 0;
+    this.state = 'idle';
+    this.setAngle(0);
+    this.setAlpha(1);
+    this.clearTint();
+    this.arcadeBody.enable = true;
+    this.play(animKey(PLAYER_SPRITE, ANIM.idle), true);
+  }
+
   /** Daño: empuja hacia atrás y bloquea el control un instante. */
   hurt(fromX: number) {
-    if (this.scene.time.now < this.hurtUntil) return;
+    if (this.isInvulnerable) return;
     this.hurtUntil = this.scene.time.now + HURT_MS;
     this.state = 'hurt';
     this.setAngle(0);
@@ -385,6 +428,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setTintFill(0xff2f6d);
     this.scene.time.delayedCall(120, () => this.clearTint());
     this.scene.cameras.main.shake(140, 0.006);
+
+    // Parpadeo durante la invulnerabilidad, para que se vea que no cuenta el daño.
+    this.scene.tweens.add({
+      targets: this,
+      alpha: { from: 1, to: 0.35 },
+      duration: 120,
+      yoyo: true,
+      repeat: Math.floor(INVULNERABLE_MS / 240),
+      onComplete: () => this.setAlpha(1),
+    });
   }
 
   /** Desintegración final: los gatos se van en partículas luminosas. */

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH, SCENES } from '@/core/constants';
+import { applyRenderScale } from '@/core/renderScale';
+import { GAME_HEIGHT, GAME_WIDTH, SCENES, RENDER_SCALE } from '@/core/constants';
 import { RainSystem } from '@/world/art/RainSystem';
 import { Typewriter } from '@/ui/Typewriter';
 import { label } from '@/ui/text';
@@ -27,6 +28,7 @@ export class EndingScene extends Phaser.Scene {
   }
 
   create() {
+    applyRenderScale(this);
     this.cameras.main.setBackgroundColor(0xffffff);
     this.beats = [
       () => this.gathering(),
@@ -83,7 +85,7 @@ export class EndingScene extends Phaser.Scene {
     )
       .setOrigin(0.5, 0)
       .setAlign('center')
-      .setLineSpacing(4)
+      .setLineSpacing(4 * RENDER_SCALE)
       .setAlpha(0);
     this.tweens.add({ targets: caption, alpha: 1, duration: 1400, delay: 2600 });
 
@@ -164,13 +166,14 @@ export class EndingScene extends Phaser.Scene {
     )
       .setOrigin(0.5, 0)
       .setAlign('center')
-      .setLineSpacing(4);
+      .setLineSpacing(4 * RENDER_SCALE);
 
     // La cÃ¡mara entra lentamente en el edificio destruido.
-    this.cameras.main.setZoom(1);
+    // El zoom base ya es RENDER_SCALE; la cinemática se acerca a partir de ahí.
+    this.cameras.main.setZoom(RENDER_SCALE);
     this.tweens.add({
       targets: this.cameras.main,
-      zoom: 2.6,
+      zoom: RENDER_SCALE * 2.6,
       scrollX: 60,
       scrollY: 40,
       duration: 6000,
@@ -207,15 +210,15 @@ export class EndingScene extends Phaser.Scene {
       this.children.removeAll();
       this.cameras.main.setBackgroundColor(0x000000);
       this.cameras.main.resetFX();
-      this.cameras.main.setZoom(1).setScroll(0, 0);
+      this.cameras.main.setZoom(RENDER_SCALE).setScroll(0, 0);
 
       // Cinco segundos exactos de negro, como pide el guion.
       this.time.delayedCall(5000, () => {
         const message = label(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, '', 'small', '#d7e3ff')
           .setOrigin(0.5)
           .setAlign('center')
-          .setLineSpacing(5)
-          .setWordWrapWidth(GAME_WIDTH - 80);
+          .setLineSpacing(5 * RENDER_SCALE)
+          .setWordWrapWidth((GAME_WIDTH - 80) * RENDER_SCALE);
 
         const typewriter = new Typewriter(this, message, {
           speed: 46,

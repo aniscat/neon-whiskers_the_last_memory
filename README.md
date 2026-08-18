@@ -32,12 +32,11 @@ docker compose down -v             # parar y borrar la memoria del agente
 docker compose --profile dev up dev   # desarrollo con recarga en caliente (:5173)
 ```
 
-## Arrancar sin Docker
+Tests y typecheck, también sin instalar nada:
 
 ```bash
-npm install
-npm run assets     # copia los sprites de los packs a public/assets
-npm run dev        # cliente en :5173 + servidor del agente en :8787
+docker compose --profile tools run --rm --build tools npm test
+docker compose --profile tools run --rm tools npm run typecheck
 ```
 
 ## Cómo jugar
@@ -67,6 +66,33 @@ En el diálogo puedes escribir libremente, o pulsar `1`/`2`/`3` para respuestas 
 Llegar a la Torre de la Memoria atravesando siete distritos. Cada uno te da una habilidad nueva
 que abre el diseño del siguiente. Recoge los rombos de datos (fragmentos de memoria) y habla con
 los gatos: pueden darte pistas, recuerdos, o despedirse para siempre.
+
+### Vida
+
+Arriba a la izquierda está el **COLLAR**: cuatro segmentos, la vida de Nova.
+
+- Pinchos, prensas, láseres y enemigos restan **1** segmento.
+- Caer al vacío o al agua resta **2** y te devuelve de inmediato al último punto firme.
+- Tras un golpe hay unos 0,7 s de invulnerabilidad (Nova parpadea).
+- Al llegar a **0** el collar se reconstruye entero en el último punto seguro. **No hay game over**
+  ni vidas que se agoten: el juego no te expulsa nunca.
+- Cada zona nueva empieza con el collar completo.
+
+### Cómo usar la IA
+
+En cada distrito hay **un gato con un aura de color** y su nombre encima. Acércate hasta que
+aparezca `[E] hablar` y pulsa **E**.
+
+Se abre un chat. **Escribe lo que quieras** y pulsa ENTER: el gato contesta en personaje. No hay
+diálogos pregrabados; responde un modelo de lenguaje (Gemini) que además puede **usar herramientas**
+para actuar sobre la partida: darte un fragmento de memoria, revelarte una pista del acertijo de la
+zona, cambiar de humor, corromper la realidad o despedirse para siempre. Recuerda lo que hablasteis
+en encuentros anteriores.
+
+Si no quieres escribir, pulsa **1**, **2** o **3** para preguntas rápidas.
+
+La pantalla de ayuda (**H**) te dice si el agente está activo o en modo de reserva. Sin
+`GEMINI_API_KEY` los gatos usan diálogos escritos a mano y verás `sin conexión` en el bocadillo.
 
 ## Diseño de niveles y física
 

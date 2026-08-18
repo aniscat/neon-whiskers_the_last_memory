@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH, PALETTE } from '@/core/constants';
+import { CANVAS_HEIGHT, CANVAS_WIDTH, PALETTE } from '@/core/constants';
 import { BootScene } from '@/scenes/BootScene';
 import { PreloadScene } from '@/scenes/PreloadScene';
 import { MainMenuScene } from '@/scenes/MainMenuScene';
@@ -19,8 +19,9 @@ import { Music } from '@/audio/ProceduralMusic';
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: 'game',
-  width: GAME_WIDTH,
-  height: GAME_HEIGHT,
+  // El canvas es el doble del mundo; cada cámara aplica ese zoom (ver renderScale).
+  width: CANVAS_WIDTH,
+  height: CANVAS_HEIGHT,
   backgroundColor: PALETTE.night,
   // Pixel art nítido: sin suavizado y sin posiciones subpíxel al redondear.
   pixelArt: true,
@@ -28,6 +29,9 @@ const config: Phaser.Types.Core.GameConfig = {
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
+    // Escala entera: con factores fraccionarios el nearest-neighbour reparte los
+    // píxeles de forma desigual y el texto se ve sucio.
+    autoRound: true,
   },
   physics: {
     default: 'arcade',

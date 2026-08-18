@@ -1,6 +1,22 @@
-/** Resolución virtual de pixel art (16:9). Se escala a la ventana con FIT. */
+/**
+ * Resolución del mundo de juego (16:9). Todas las coordenadas de escenas, HUD y
+ * niveles están en estas unidades.
+ */
 export const GAME_WIDTH = 480;
 export const GAME_HEIGHT = 270;
+
+/**
+ * El canvas real es RENDER_SCALE veces más grande y cada cámara usa ese zoom, así
+ * que las coordenadas de arriba no cambian pero hay 4x más píxeles donde dibujar.
+ *
+ * Esto es lo que hace legible el texto: en un canvas de 480x270, una fuente de
+ * 6px tiene glifos de 5 píxeles de alto y al ampliarla queda ilegible. Con el
+ * canvas a 960x540, `ui/text.ts` puede renderizar la fuente al doble de tamaño y
+ * dibujarla a mitad de escala, quedando 1:1 con los píxeles del dispositivo.
+ */
+export const RENDER_SCALE = 2;
+export const CANVAS_WIDTH = GAME_WIDTH * RENDER_SCALE;
+export const CANVAS_HEIGHT = GAME_HEIGHT * RENDER_SCALE;
 
 /** Los sprites de gato del pack son tiras de una fila con frames de 32x32. */
 export const CAT_FRAME = 32;

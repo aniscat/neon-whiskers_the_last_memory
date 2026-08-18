@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH, PALETTE, SCENES } from '@/core/constants';
+import { applyRenderScale } from '@/core/renderScale';
+import { GAME_HEIGHT, GAME_WIDTH, PALETTE, SCENES, RENDER_SCALE } from '@/core/constants';
 import { RainSystem } from '@/world/art/RainSystem';
 import { Typewriter } from '@/ui/Typewriter';
 import { label, neonLabel } from '@/ui/text';
@@ -32,14 +33,15 @@ export class IntroScene extends Phaser.Scene {
   }
 
   create() {
+    applyRenderScale(this);
     this.cameras.main.setBackgroundColor(PALETTE.night);
     new RainSystem(this, 5).setIntensity(0.35);
 
     this.text = label(this, GAME_WIDTH / 2, GAME_HEIGHT / 2 - 20, '', 'body', '#d7e3ff')
       .setOrigin(0.5)
       .setAlign('center')
-      .setLineSpacing(4)
-      .setWordWrapWidth(GAME_WIDTH - 60);
+      .setLineSpacing(4 * RENDER_SCALE)
+      .setWordWrapWidth((GAME_WIDTH - 60) * RENDER_SCALE);
 
     this.prompt = label(this, GAME_WIDTH - 8, GAME_HEIGHT - 10, '', 'micro', '#6f8bd0')
       .setOrigin(1, 1)
