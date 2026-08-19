@@ -93,7 +93,7 @@ export class DialogueScene extends Phaser.Scene {
       this,
       x + 10,
       y + PANEL_H - 13,
-      '1/2/3 respuestas rápidas   ENTER enviar   ESC salir',
+      '1/2/3 respuestas rápidas   ENTER enviar   ESC cerrar',
       'micro',
       '#3a4770',
     );
@@ -117,7 +117,13 @@ export class DialogueScene extends Phaser.Scene {
         return;
       }
       if (event.key === 'Enter') {
-        this.send(this.input$);
+        if (this.input$.length > 0) {
+          this.send(this.input$);
+        } else if (!this.typewriter.isDone) {
+          // ENTER vacío mientras el gato está hablando: acelerar la animación.
+          this.typewriter.skip();
+        }
+        // ENTER vacío con typewriter terminado no hace nada: solo ESC cierra.
         return;
       }
       if (event.key === 'Backspace') {
@@ -145,12 +151,7 @@ export class DialogueScene extends Phaser.Scene {
 
   private async send(message: string) {
     const text = message.trim();
-    if (!text) {
-      // ENTER con la línea vacía cierra si ya se leyó la respuesta.
-      if (this.typewriter.isDone) this.close();
-      else this.typewriter.skip();
-      return;
-    }
+    if (!text) return; // Solo espacios: ignorar.
 
     this.waiting = true;
     this.input$ = '';

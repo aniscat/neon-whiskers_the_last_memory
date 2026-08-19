@@ -34,14 +34,14 @@ export const ZONES: Record<ZoneId, ZoneMeta> = {
   },
   z2: {
     id: 'z2',
-    nombre: 'Trenes suspendidos',
+    nombre: 'Azoteas y pasarelas',
     otorga: 'dash',
     npc: 'olvido',
     npcSprite: 'white',
     ambiente:
-      'Vagones colgando de raíles magnéticos a doscientos metros del suelo. El viento empuja la lluvia en diagonal. Los anuncios holográficos de los costados repiten el mismo fotograma.',
+      'Pasarelas de acero entre rascacielos a doscientos metros del suelo. El viento zarandea los cables de neón apagados. La lluvia borra el horizonte.',
     acertijo:
-      'El convoy solo avanza si los tres vagones marcan el mismo destino. Los paneles de destino se reinician cuando el tren frena.',
+      'Dos señales de destino deben marcarse a la vez para desbloquear la barrera que cierra la azotea de la torre. Las señales se reinician al soltarse.',
   },
   z3: {
     id: 'z3',

@@ -111,6 +111,8 @@ con esas cotas. Si una plataforma solo se alcanza usando una habilidad, hay que 
 
 ## El agente y sus herramientas
 
+Para una explicación detallada de cómo funciona la IA, el flujo cliente-servidor y el uso de herramientas, consulta la página de [Arquitectura del Agente de IA](file:///c:/Users/gabya/OneDrive/Documentos/IPIAM/PROYECTO/neon-whiskers_the_last_memory/docs/arquitectura_agente.md).
+
 `POST /api/agent/chat` recibe el mensaje del jugador más una instantánea del estado y devuelve
 `{ reply, effects, toolTrace }`. El servidor **nunca** muta el estado del juego: las herramientas
 que afectan al mundo devuelven efectos que el cliente aplica sobre su propio `GameState`.

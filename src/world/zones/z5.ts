@@ -1,80 +1,56 @@
 import { zone } from '../ZoneDefinition';
 
 /**
- * Zona 5 — Barrios de pandillas. Zona hostil y de doble altura: hay un camino por
- * el suelo y otro por el techo. La gravedad invertida se entrega al principio
- * porque el acertijo consiste en recorrer los tres generadores por arriba.
+ * Zona 5 — Barrios de pandillas. Se entrega la gravedad invertida. Zona con
+ * suelo continuo. La plataforma del techo es accesible solo con gravityFlip
+ * y contiene un fragmento como recompensa de exploración.
  */
 export const z5 = zone({
   id: 'z5',
-  width: 2600,
-  height: 560,
-  spawn: { x: 40, y: 480 },
-  exit: { x: 2530, y: 460, w: 40, h: 64, to: 'z6' },
+  width: 900,
+  height: 420,
+  spawn: { x: 40, y: 370 },
+  exit: { x: 830, y: 340, w: 40, h: 64, to: 'z6' },
+  floor: true,
   rain: { intensity: 0.7 },
 
   platforms: [
-    { x: 120, y: 470, w: 140, h: 10, style: 'concrete' },
-    { x: 320, y: 430, w: 100, h: 10, style: 'hazard' },
-
-    // Techo continuo: el camino "de arriba" cuando se invierte la gravedad.
-    { x: 500, y: 60, w: 1700, h: 14, style: 'metal' },
-
-    // Barricadas de chatarra a nivel de suelo.
-    { x: 520, y: 460, w: 120, h: 10, style: 'hazard' },
-    { x: 720, y: 420, w: 100, h: 10, style: 'concrete' },
-    { x: 900, y: 470, w: 120, h: 10, style: 'hazard' },
-    { x: 1120, y: 430, w: 100, h: 10, style: 'concrete' },
-    { x: 1320, y: 470, w: 140, h: 10, style: 'hazard' },
-    { x: 1560, y: 420, w: 120, h: 10, style: 'concrete' },
-    { x: 1780, y: 460, w: 140, h: 10, style: 'hazard' },
-    { x: 2020, y: 420, w: 120, h: 10, style: 'concrete' },
-    { x: 2240, y: 460, w: 140, h: 10, style: 'concrete' },
-    { x: 2460, y: 460, w: 140, h: 12, style: 'concrete' },
+    { x: 100, y: 370, w: 120, h: 10, style: 'concrete' },
+    { x: 280, y: 350, w: 120, h: 10, style: 'metal' },
+    // Área del NPC y acertijo.
+    { x: 460, y: 370, w: 180, h: 10, style: 'concrete' },
+    // Post-puerta.
+    { x: 700, y: 370, w: 200, h: 10, style: 'concrete' },
+    // Techo: solo accesible con gravedad invertida (exploración).
+    { x: 400, y: 60, w: 200, h: 14, style: 'metal', reachedWith: 'gravityFlip' },
   ],
 
-  walls: [
-    { x: 470, y: 60, w: 14, h: 380, style: 'wall' },
-    { x: 2210, y: 60, w: 14, h: 380, style: 'wall' },
-  ],
+  walls: [],
 
   hazards: [
-    { x: 660, y: 514, w: 200, h: 10, kind: 'spike' },
-    { x: 1040, y: 514, w: 220, h: 10, kind: 'spike' },
-    { x: 1480, y: 514, w: 240, h: 10, kind: 'spike' },
-    { x: 1940, y: 514, w: 200, h: 10, kind: 'spike' },
-    { x: 1200, y: 90, w: 6, h: 100, kind: 'laser', cycle: 1400, phase: 0 },
-    { x: 1700, y: 90, w: 6, h: 100, kind: 'laser', cycle: 1400, phase: 700 },
+    { x: 300, y: 398, w: 80, h: 10, kind: 'spike' },
   ],
 
-  // Los tres generadores están pegados al techo: hay que ir por arriba.
   plates: [
-    { x: 760, y: 80, group: 'generadores', holdMs: 5000 },
-    { x: 1400, y: 80, group: 'generadores', holdMs: 5000 },
-    { x: 2020, y: 80, group: 'generadores', holdMs: 5000 },
+    { x: 510, y: 362, group: 'generadores', holdMs: 2200 },
+    { x: 570, y: 362, group: 'generadores', holdMs: 2200 },
   ],
 
-  doors: [{ id: 'paso-norte', x: 2380, y: 460, h: 64, opensWith: 'puzzle' }],
+  doors: [{ id: 'paso-norte', x: 680, y: 370, h: 64, opensWith: 'puzzle' }],
 
   fragments: [
-    { id: 'm09', x: 1140, y: 400 },
-    { id: 'm10', x: 1600, y: 100 },
+    { id: 'm09', x: 320, y: 316 },
+    { id: 'm10', x: 490, y: 90 },
   ],
 
-  pickups: [{ ability: 'gravityFlip', x: 370, y: 400 }],
+  pickups: [{ ability: 'gravityFlip', x: 140, y: 336 }],
 
-  npcs: [{ npcId: 'ira', x: 1600, y: 395 }],
+  npcs: [{ npcId: 'ira', x: 540, y: 345 }],
 
-  enemies: [
-    { kind: 'gang', x: 800, y: 500, patrol: 120 },
-    { kind: 'gang', x: 1300, y: 500, patrol: 140 },
-    { kind: 'gang', x: 1900, y: 500, patrol: 130 },
-    { kind: 'drone', x: 1500, y: 200, patrol: 200 },
-  ],
+  enemies: [{ kind: 'gang', x: 750, y: 360, patrol: 60 }],
 
   signs: [
-    { x: 700, y: 380, text: 'TERRITORIO COLMILLO', corrupted: 'TERRITORIO HASTA EL MARTES' },
-    { x: 1600, y: 140, text: 'GEN 1-3', corrupted: 'GEN 1-3 — SIN CARGA' },
-    { x: 2300, y: 420, text: 'LÍMITE DE SECTOR', corrupted: 'NO HAY NADA DETRÁS' },
+    { x: 540, y: 330, text: 'TERRITORIO COLMILLO', corrupted: 'TERRITORIO HASTA EL MARTES' },
+    { x: 830, y: 330, text: 'LÍMITE DE SECTOR', corrupted: 'NO HAY NADA DETRÁS' },
   ],
 });

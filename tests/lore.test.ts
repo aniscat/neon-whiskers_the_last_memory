@@ -39,10 +39,11 @@ describe('coherencia del lore', () => {
     }
   });
 
-  it('las siete habilidades se reparten una por zona jugable', () => {
+  it('las habilidades se reparten una por zona jugable', () => {
+    const playableCount = ZONE_ORDER.filter((z) => z !== 'tower').length;
     const otorgadas = ZONE_ORDER.map((id) => ZONES[id].otorga).filter(Boolean);
-    expect(otorgadas.length).toBe(7);
-    expect(new Set(otorgadas).size).toBe(7);
+    expect(otorgadas.length).toBe(playableCount);
+    expect(new Set(otorgadas).size).toBe(otorgadas.length);
   });
 });
 

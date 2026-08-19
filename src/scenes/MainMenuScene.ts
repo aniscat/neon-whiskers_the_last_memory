@@ -97,6 +97,11 @@ export class MainMenuScene extends Phaser.Scene {
         action: () => this.scene.start(SCENES.howToPlay),
       },
       {
+        label: 'ARQUITECTURA IA',
+        enabled: true,
+        action: () => this.scene.start(SCENES.agentArch),
+      },
+      {
         label: 'CRÉDITOS',
         enabled: true,
         action: () => this.scene.start(SCENES.credits, { fromMenu: true }),
@@ -105,7 +110,7 @@ export class MainMenuScene extends Phaser.Scene {
 
     this.labels = this.options.map((opt, i) =>
       this.add
-        .text(GAME_WIDTH / 2, 122 + i * 16, opt.label, {
+        .text(GAME_WIDTH / 2, 114 + i * 14, opt.label, {
           fontFamily: 'monospace',
           fontSize: '9px',
           color: '#d7e3ff',

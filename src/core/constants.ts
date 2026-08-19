@@ -49,6 +49,7 @@ export const SCENES = {
   revelation: 'revelation',
   ending: 'ending',
   credits: 'credits',
+  agentArch: 'agent-arch',
   debugSheets: 'debug-sheets',
 } as const;
 

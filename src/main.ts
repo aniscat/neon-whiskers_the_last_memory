@@ -13,6 +13,7 @@ import { TowerBossScene } from '@/scenes/TowerBossScene';
 import { RevelationScene } from '@/scenes/RevelationScene';
 import { EndingScene } from '@/scenes/EndingScene';
 import { CreditsScene } from '@/scenes/CreditsScene';
+import { AgentArchScene } from '@/scenes/AgentArchScene';
 import { DebugSheetsScene } from '@/scenes/DebugSheetsScene';
 import { Music } from '@/audio/ProceduralMusic';
 
@@ -57,6 +58,7 @@ const config: Phaser.Types.Core.GameConfig = {
     RevelationScene,
     EndingScene,
     CreditsScene,
+    AgentArchScene,
     DebugSheetsScene,
   ],
 };
@@ -82,9 +84,8 @@ try {
   const pre = document.getElementById('boot-error');
   if (pre) {
     pre.style.display = 'block';
-    pre.textContent = `No se pudo iniciar el juego:\n\n${
-      error instanceof Error ? error.stack ?? error.message : String(error)
-    }`;
+    pre.textContent = `No se pudo iniciar el juego:\n\n${error instanceof Error ? error.stack ?? error.message : String(error)
+      }`;
   }
   throw error;
 }

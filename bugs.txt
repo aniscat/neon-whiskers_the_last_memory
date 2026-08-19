@@ -1,0 +1,5 @@
+* Al intentar hablar con los gatos npc ai NO PUEDO DAR ENTER para mandar mi pregunnta
+* patalla final zoom hacia la esquina, se mira la esquina
+* Texto del final del juego, antes de los creditos, se ve fuera de la pantalla no se visualiza por completo
+* El texto dentro de Arquitectura AI  que sice Sin GEMINI API se sale de la pantalla, podrias poner un scroll para que se vea
+* La ciudad de fondo aparece muy arriba, el espacio de abajo esta en color azu es muy grande

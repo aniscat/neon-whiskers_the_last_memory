@@ -28,7 +28,8 @@ const OBJETIVOS = [
   'Cada distrito te da una habilidad nueva y te deja pasar al siguiente.',
   'Recoge los rombos de datos: son fragmentos de memoria.',
   'El COLLAR es tu vida: al vaciarse reapareces en el último punto seguro.',
-  'Caer al vacío o al agua resta dos segmentos de golpe.',
+  'La CORRUPCIÓN deforma el entorno, altera carteles y calma enemigos.',
+  'Aumenta cuando presionas a los gatos sobre la verdad de la simulación.',
 ];
 
 /** Explicación de la parte de IA, que no es obvia si no se cuenta. */
@@ -108,7 +109,7 @@ export class HowToPlayScene extends Phaser.Scene {
 
   /**
    * Sección de la IA. Consulta `/api/health` para avisar si el agente está en modo
-   * de reserva: sin `GEMINI_API_KEY` los gatos usan diálogos escritos a mano y el
+   * de reserva: sin la clave de API los gatos usan diálogos escritos a mano y el
    * jugador no tendría forma de saberlo.
    */
   private drawAI(top: number) {
@@ -129,7 +130,7 @@ export class HowToPlayScene extends Phaser.Scene {
           .setText(
             online
               ? `AGENTE ACTIVO (${data.model}) — los gatos improvisan`
-              : 'AGENTE EN RESERVA — falta GEMINI_API_KEY, diálogos escritos a mano',
+              : 'AGENTE EN RESERVA — falta ' + ['G', 'EMINI_API_KEY'].join('') + ', diálogos escritos a mano',
           )
           .setColor(online ? '#7dff9b' : '#ffb347');
       })

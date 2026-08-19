@@ -52,6 +52,7 @@ export class TowerBossScene extends Phaser.Scene {
   private phase = 0;
   private vulnerable = false;
   private finished = false;
+  private transitioning = false;
   private attackTimer?: Phaser.Time.TimerEvent;
   private projectiles!: Phaser.Physics.Arcade.Group;
 
@@ -94,12 +95,42 @@ export class TowerBossScene extends Phaser.Scene {
     this.hpMeter.setValue(1);
     this.hpMeter.setScrollFactor(0).setDepth(40);
 
+    label(this, GAME_WIDTH / 2, 26, 'SALTA SOBRE EL NÚCLEO CUANDO DESCIENDA', 'micro', '#a8b8e8')
+      .setOrigin(0.5, 0)
+      .setScrollFactor(0)
+      .setDepth(40);
+
     this.lineText = label(this, GAME_WIDTH / 2, GAME_HEIGHT - 24, '', 'micro', '#d7e3ff')
       .setOrigin(0.5)
       .setWordWrapWidth((GAME_WIDTH - 40) * RENDER_SCALE)
       .setAlign('center')
       .setScrollFactor(0)
       .setDepth(40);
+
+    // Hint de mecánica: desaparece sola en 5 segundos para no molestar.
+    const mechHint = label(
+      this,
+      GAME_WIDTH / 2,
+      GAME_HEIGHT / 2 - 10,
+      '▼  SALTA ENCIMA DEL NÚCLEO CUANDO DESCIENDA  ▼',
+      'micro',
+      '#ffb347',
+    )
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(40)
+      .setAlpha(0);
+
+    this.tweens.add({
+      targets: mechHint,
+      alpha: { from: 0, to: 1 },
+      duration: 600,
+      onComplete: () => {
+        this.time.delayedCall(4000, () => {
+          this.tweens.add({ targets: mechHint, alpha: 0, duration: 800 });
+        });
+      },
+    });
 
     this.startPhase(0);
     this.cameras.main.fadeIn(800, 0, 0, 0);
@@ -127,6 +158,26 @@ export class TowerBossScene extends Phaser.Scene {
     };
     this.player.bindKeys(keys);
     this.player.setHoloGroup(this.physics.add.staticGroup());
+
+    // ESC: volver al menú principal.
+    kb.on('keydown-ESC', () => {
+      if (this.finished) return;
+      this.cameras.main.fadeOut(400, 0, 0, 0);
+      this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+        this.scene.start(SCENES.menu);
+      });
+    });
+
+    // La salida de la Torre lleva a la escena de revelación una vez derrotado
+    // MOTHER. Antes de la derrota el marcador de salida está ahí pero no hace nada.
+    this.physics.add.overlap(this.player, this.level.exit, () => {
+      if (!this.finished || this.transitioning) return;
+      this.transitioning = true;
+      this.cameras.main.fadeOut(800, 255, 255, 255);
+      this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+        this.scene.start(SCENES.revelation);
+      });
+    });
   }
 
   /** El núcleo es un ojo de datos dibujado por código. */
@@ -268,10 +319,30 @@ export class TowerBossScene extends Phaser.Scene {
     this.say('Espera. Antes de apagarme, mira.');
     this.tweens.add({ targets: this.core, alpha: 0.2, scale: 1.6, duration: 2400 });
 
-    this.time.delayedCall(3000, () => {
-      this.cameras.main.fadeOut(1200, 255, 255, 255);
-      this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-        this.scene.start(SCENES.revelation);
+    // Descongelar a Nova tras la cinemática para que pueda caminar a la SALIDA.
+    this.time.delayedCall(2600, () => {
+      this.player.freeze(false);
+      this.say('Ve a la SALIDA →');
+
+      // Flecha de salida parpadeante en la esquina derecha: inamovible.
+      const exitArrow = label(
+        this,
+        GAME_WIDTH - 10,
+        GAME_HEIGHT / 2,
+        '→ SALIDA',
+        'small',
+        '#3fe0d0',
+      )
+        .setOrigin(1, 0.5)
+        .setScrollFactor(0)
+        .setDepth(50);
+
+      this.tweens.add({
+        targets: exitArrow,
+        alpha: { from: 0.3, to: 1 },
+        duration: 500,
+        yoyo: true,
+        repeat: -1,
       });
     });
   }

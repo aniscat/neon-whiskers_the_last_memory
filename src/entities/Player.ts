@@ -25,7 +25,7 @@ const DASH_MS = 150;
 const DASH_COOLDOWN_MS = 420;
 const CLIMB_SPEED = 70;
 const COYOTE_MS = 90;
-const JUMP_BUFFER_MS = 110;
+const JUMP_BUFFER_MS = 160;
 const HURT_MS = 450;
 /** Gracia extra tras el golpe, ya recuperado el control. */
 const INVULNERABLE_MS = 700;
@@ -124,8 +124,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   get onGround() {
-    const { blocked } = this.arcadeBody;
-    return this.flipped ? blocked.up : blocked.down;
+    const { blocked, touching } = this.arcadeBody;
+    return this.flipped ? (blocked.up || touching.up) : (blocked.down || touching.down);
   }
 
   get isBusy() {
@@ -206,10 +206,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     const canFirst = (this.onGround || coyote) && this.jumpsUsed === 0;
     const canExtra = !this.onGround && this.jumpsUsed > 0 && this.jumpsUsed < maxJumps;
-    if (!canFirst && !canExtra) return;
+    const canAirFirst = !this.onGround && !coyote && this.jumpsUsed === 0 && maxJumps > 1;
+
+    if (!canFirst && !canExtra && !canAirFirst) return;
 
     this.jumpPressedAt = -Infinity;
-    this.jumpsUsed++;
+    if (canAirFirst) {
+      this.jumpsUsed = 2; // Consume ambos saltos al activar el doble salto directamente en el aire
+    } else {
+      this.jumpsUsed++;
+    }
     this.setVelocityY(this.flipped ? JUMP_VELOCITY : -JUMP_VELOCITY);
     this.state = 'rise';
 
@@ -415,6 +421,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.clearTint();
     this.arcadeBody.enable = true;
     this.play(animKey(PLAYER_SPRITE, ANIM.idle), true);
+    this.jumpsUsed = 0;
   }
 
   /** Daño: empuja hacia atrás y bloquea el control un instante. */
