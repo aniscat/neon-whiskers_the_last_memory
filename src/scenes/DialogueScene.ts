@@ -110,12 +110,13 @@ export class DialogueScene extends Phaser.Scene {
     const kb = this.input.keyboard!;
 
     kb.on('keydown', (event: KeyboardEvent) => {
-      if (this.waiting) return;
-
+      // ESC siempre cierra, incluso mientras se espera la respuesta del agente.
       if (event.key === 'Escape') {
         this.close();
         return;
       }
+      if (this.waiting) return;
+
       if (event.key === 'Enter') {
         if (this.input$.length > 0) {
           this.send(this.input$);
@@ -131,9 +132,10 @@ export class DialogueScene extends Phaser.Scene {
         this.renderInput();
         return;
       }
-      // Respuestas rápidas solo cuando no se ha empezado a escribir.
+      // Respuestas rápidas: rellenan el input para que el jugador confirme con ENTER.
       if (this.input$.length === 0 && ['1', '2', '3'].includes(event.key)) {
-        this.send(QUICK_REPLIES[Number(event.key) - 1]);
+        this.input$ = QUICK_REPLIES[Number(event.key) - 1];
+        this.renderInput();
         return;
       }
       // `key.length === 1` cubre acentos y ñ sin depender de códigos de tecla.
@@ -159,24 +161,31 @@ export class DialogueScene extends Phaser.Scene {
     this.inputText.setText(`> ${text}`).setColor('#6f8bd0');
     this.setStatus('pensando');
 
-    this.abortController = new AbortController();
-    const response = await AgentClient.chat(this.npcId, text, this.abortController.signal);
+    try {
+      this.abortController = new AbortController();
+      const response = await AgentClient.chat(this.npcId, text, this.abortController.signal);
 
-    const outcome = applyEffects(response.effects);
-    if (outcome.emotion) this.applyEmotion(outcome.emotion);
-    this.dissolvePending = outcome.dissolve;
-    this.pendingNotices = outcome.notices;
+      const outcome = applyEffects(response.effects);
+      if (outcome.emotion) this.applyEmotion(outcome.emotion);
+      this.dissolvePending = outcome.dissolve;
+      this.pendingNotices = outcome.notices;
 
-    this.setStatus(response.fallback ? 'sin conexión' : '');
-    this.typewriter.start(response.reply);
+      this.setStatus(response.fallback ? 'sin conexión' : '');
+      this.typewriter.start(response.reply);
 
-    if (DEBUG.has('agent') && response.toolTrace.length > 0) {
-      console.log(`[agent:${this.npcId}] herramientas usadas:`, response.toolTrace);
-      this.showToolTrace(response.toolTrace.map((t) => t.name));
+      if (DEBUG.has('agent') && response.toolTrace.length > 0) {
+        console.log(`[agent:${this.npcId}] herramientas usadas:`, response.toolTrace);
+        this.showToolTrace(response.toolTrace.map((t) => t.name));
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      console.error('[dialogue] error en send:', error);
+      this.setStatus('error');
+      this.typewriter.start('La señal se perdió. Intenta de nuevo.');
+    } finally {
+      this.waiting = false;
+      this.inputText.setColor('#ffb347');
     }
-
-    this.waiting = false;
-    this.inputText.setColor('#ffb347');
   }
 
   private applyEmotion(emotion: Emotion) {

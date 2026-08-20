@@ -20,8 +20,8 @@ const LAYERS: LayerSpec[] = [
     scroll: 0.08,
     color: 0x0a0f24,
     alpha: 1,
-    minHeight: 90,
-    maxHeight: 190,
+    minHeight: 70,
+    maxHeight: 150,
     minWidth: 26,
     maxWidth: 54,
     litChance: 0.1,
@@ -31,8 +31,8 @@ const LAYERS: LayerSpec[] = [
     scroll: 0.2,
     color: 0x0d1330,
     alpha: 1,
-    minHeight: 60,
-    maxHeight: 140,
+    minHeight: 50,
+    maxHeight: 110,
     minWidth: 18,
     maxWidth: 40,
     litChance: 0.25,
@@ -42,8 +42,8 @@ const LAYERS: LayerSpec[] = [
     scroll: 0.4,
     color: 0x111838,
     alpha: 1,
-    minHeight: 40,
-    maxHeight: 100,
+    minHeight: 35,
+    maxHeight: 80,
     minWidth: 12,
     maxWidth: 30,
     litChance: 0.4,
@@ -199,11 +199,12 @@ export class NeonCityBackground {
    * Desplaza las capas según la cámara. Se llama desde el `update` de la escena
    * porque los TileSprite están fijos y movemos su `tilePositionX`.
    */
-  update(cameraScrollX: number, cameraScrollY: number) {
+  update(cameraScrollX: number, _cameraScrollY: number) {
     this.layers.forEach((tile, i) => {
-      const spec = LAYERS[i];
-      tile.tilePositionX = cameraScrollX * spec.scroll;
-      tile.y = GAME_HEIGHT + cameraScrollY * spec.scroll * 0.25;
+      tile.tilePositionX = cameraScrollX * LAYERS[i].scroll;
+      // Los edificios quedan fijos al borde inferior de la pantalla.
+      // Antes se desplazaban hacia abajo con el scroll vertical, dejando un
+      // hueco de cielo visible debajo del skyline.
     });
   }
 

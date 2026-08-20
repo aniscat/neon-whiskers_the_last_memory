@@ -10,6 +10,9 @@ import { label, neonLabel } from '@/ui/text';
  * Accesible desde el menú principal como "ARQUITECTURA IA".
  * Muestra un diagrama visual por bloques del flujo cliente-servidor-Gemini,
  * las herramientas del agente, dónde se usa en el juego y las garantías de diseño.
+ *
+ * Usa un layout a dos columnas para herramientas y usos, y una sola línea por
+ * item para evitar solapamiento de texto.
  */
 export class AgentArchScene extends Phaser.Scene {
   constructor() {
@@ -28,125 +31,7 @@ export class AgentArchScene extends Phaser.Scene {
 
     drawPanel(this, 8, 6, GAME_WIDTH - 16, GAME_HEIGHT - 12, PALETTE.neonViolet, 0.5);
 
-    neonLabel(this, GAME_WIDTH / 2, 14, 'ARQUITECTURA DEL AGENTE DE IA', 'small', '#8b5cff').setOrigin(
-      0.5,
-      0,
-    );
-
-    const g = this.add.graphics();
-
-    // ─── DIAGRAMA DE FLUJO ──────────────────────────────────────────────────
-    // Tres cajas: CLIENTE | SERVIDOR | GEMINI API
-    // Disposición horizontal centrada en y≈80
-
-    const boxY = 36;
-    const boxH = 28;
-
-    // Caja CLIENTE
-    const cxClient = 58;
-    this.drawBox(g, cxClient - 50, boxY, 100, boxH, 0x3fe0d0);
-    label(this, cxClient, boxY + 6, 'CLIENTE', 'micro', '#3fe0d0').setOrigin(0.5, 0);
-    label(this, cxClient, boxY + 14, 'GameState', 'micro', '#a8b8e8').setOrigin(0.5, 0);
-    label(this, cxClient, boxY + 21, 'DialogueScene', 'micro', '#6f8bd0').setOrigin(0.5, 0);
-
-    // Caja SERVIDOR
-    const cxServer = GAME_WIDTH / 2;
-    this.drawBox(g, cxServer - 54, boxY, 108, boxH, 0x8b5cff);
-    label(this, cxServer, boxY + 6, 'SERVIDOR', 'micro', '#8b5cff').setOrigin(0.5, 0);
-    label(this, cxServer, boxY + 14, 'Express + Agent', 'micro', '#a8b8e8').setOrigin(0.5, 0);
-    label(this, cxServer, boxY + 21, 'personas + tools', 'micro', '#6f8bd0').setOrigin(0.5, 0);
-
-    // Caja GEMINI
-    const cxGemini = GAME_WIDTH - 62;
-    this.drawBox(g, cxGemini - 52, boxY, 104, boxH, 0xff2f6d);
-    label(this, cxGemini, boxY + 6, 'GEMINI API', 'micro', '#ff2f6d').setOrigin(0.5, 0);
-    label(this, cxGemini, boxY + 14, 'LLM + tool use', 'micro', '#a8b8e8').setOrigin(0.5, 0);
-    label(this, cxGemini, boxY + 21, 'loop hasta reply', 'micro', '#6f8bd0').setOrigin(0.5, 0);
-
-    // Flechas horizontales entre cajas
-    const midY = boxY + boxH / 2;
-    // Cliente → Servidor (mensaje + snapshot)
-    this.drawArrow(g, cxClient + 50, midY, cxServer - 55, midY, 0x3fe0d0);
-    label(this, (cxClient + 50 + cxServer - 55) / 2, midY - 8, 'POST /api/agent/chat', 'micro', '#3fe0d0').setOrigin(0.5, 1);
-    label(this, (cxClient + 50 + cxServer - 55) / 2, midY - 1, 'msg + snapshot', 'micro', '#6f8bd0').setOrigin(0.5, 1);
-
-    // Servidor ↔ Gemini (bidireccional)
-    this.drawArrow(g, cxServer + 55, midY - 3, cxGemini - 53, midY - 3, 0x8b5cff);
-    this.drawArrow(g, cxGemini - 53, midY + 4, cxServer + 55, midY + 4, 0xff2f6d);
-    label(this, (cxServer + 55 + cxGemini - 53) / 2, midY - 10, 'prompt', 'micro', '#8b5cff').setOrigin(0.5, 1);
-    label(this, (cxServer + 55 + cxGemini - 53) / 2, midY + 5, 'reply + effects', 'micro', '#ff2f6d').setOrigin(0.5, 0);
-
-    // Servidor → Cliente (flecha de retorno, curvada hacia abajo)
-    const returnY = boxY + boxH + 10;
-    g.lineStyle(1, 0xffb347, 0.9);
-    g.beginPath();
-    g.moveTo(cxServer - 54, boxY + boxH);
-    g.lineTo(cxServer - 54, returnY);
-    g.lineTo(cxClient + 2, returnY);
-    g.lineTo(cxClient + 2, boxY + boxH);
-    g.strokePath();
-    // Punta de flecha
-    g.fillStyle(0xffb347, 0.9);
-    g.fillTriangle(cxClient + 2, boxY + boxH, cxClient - 3, boxY + boxH + 5, cxClient + 7, boxY + boxH + 5);
-    label(this, (cxClient + cxServer) / 2, returnY - 1, '{ reply, effects[], toolTrace }', 'micro', '#ffb347').setOrigin(0.5, 1);
-
-    // ─── HERRAMIENTAS ───────────────────────────────────────────────────────
-    const toolsY = boxY + boxH + 22;
-    label(this, 12, toolsY, 'HERRAMIENTAS DEL AGENTE', 'micro', '#ff2f6d');
-
-    const herramientas: Array<[string, string]> = [
-      ['consultar_estado_jugador', 'zona, habilidades, fragmentos, corrupción'],
-      ['recuperar_fragmento_memoria', 'busca en el lore canónico (shared/lore.ts)'],
-      ['otorgar_fragmento_memoria', 'entrega el recuerdo a Nova'],
-      ['revelar_pista', 'pista del acertijo en 3 niveles de concreción'],
-      ['corromper_realidad', 'glitches, lluvia invertida, signos alterados'],
-      ['cambiar_emocion', 'tono y tinte del personaje NPC'],
-      ['despedirse_para_siempre', 'el gato se disuelve y no vuelve a aparecer'],
-    ];
-
-    let ty = toolsY + 10;
-    for (const [tool, desc] of herramientas) {
-      // Punto de color
-      g.fillStyle(0xffb347, 1);
-      g.fillRect(12, ty + 1, 3, 3);
-      label(this, 18, ty, tool, 'micro', '#ffb347');
-      label(this, 22, ty + 7, desc, 'micro', '#6f8bd0');
-      ty += 15;
-    }
-
-    // ─── DÓNDE SE USA EN EL JUEGO ───────────────────────────────────────────
-    const useY = ty + 3;
-    label(this, 12, useY, '¿DÓNDE SE USA EN EL JUEGO?', 'micro', '#3fe0d0');
-
-    const usos: Array<[string, string]> = [
-      ['[E] cerca de un gato NPC', 'abre DialogueScene → manda el snapshot al agente'],
-      ['Agente responde', 'Gemini llama herramientas (lore, pistas, efectos)'],
-      ['effects[] aplicados', 'corrupción sube, habilidad desbloqueada, gato disuelto'],
-      ['Sin GEMINI_API_KEY', 'el servidor usa diálogos pregrabados (fallback.ts)'],
-      ['Sin servidor', 'el cliente usa AgentClient.offline() con respuestas locales'],
-    ];
-
-    let uy = useY + 10;
-    for (const [trigger, effect] of usos) {
-      g.fillStyle(0x3fe0d0, 1);
-      g.fillRect(12, uy + 1, 3, 3);
-      label(this, 18, uy, trigger, 'micro', '#3fe0d0');
-      label(this, 22, uy + 7, effect, 'micro', '#6f8bd0');
-      uy += 15;
-    }
-
-    // ─── GARANTÍAS ──────────────────────────────────────────────────────────
-    const guarY = uy + 3;
-    label(this, 12, guarY, 'GARANTÍAS DE DISEÑO', 'micro', '#ff2f6d');
-    const garantias = [
-      'El servidor NUNCA muta GameState — solo devuelve effects[].',
-      'El lore canónico (shared/lore.ts) limita lo que el agente puede inventar.',
-    ];
-    let gy = guarY + 10;
-    for (const g2 of garantias) {
-      label(this, 18, gy, g2, 'micro', '#a8b8e8');
-      gy += 8;
-    }
+    this.buildContent();
 
     // Hint de salida parpadeante
     const hint = label(
@@ -178,6 +63,134 @@ export class AgentArchScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input.keyboard?.removeAllListeners();
     });
+  }
+
+  /** Dibuja todo el contenido informativo dentro del panel. */
+  private buildContent() {
+    neonLabel(this, GAME_WIDTH / 2, 14, 'ARQUITECTURA DEL AGENTE DE IA', 'small', '#8b5cff').setOrigin(
+      0.5,
+      0,
+    );
+
+    const g = this.add.graphics();
+
+    // ─── DIAGRAMA DE FLUJO ──────────────────────────────────────────────────
+    // Tres cajas: CLIENTE | SERVIDOR | GEMINI API
+
+    const boxY = 30;
+    const boxH = 24;
+
+    // Caja CLIENTE
+    const cxClient = 58;
+    this.drawBox(g, cxClient - 50, boxY, 100, boxH, 0x3fe0d0);
+    label(this, cxClient, boxY + 4, 'CLIENTE', 'micro', '#3fe0d0').setOrigin(0.5, 0);
+    label(this, cxClient, boxY + 11, 'GameState', 'micro', '#a8b8e8').setOrigin(0.5, 0);
+    label(this, cxClient, boxY + 18, 'DialogueScene', 'micro', '#6f8bd0').setOrigin(0.5, 0);
+
+    // Caja SERVIDOR
+    const cxServer = GAME_WIDTH / 2;
+    this.drawBox(g, cxServer - 54, boxY, 108, boxH, 0x8b5cff);
+    label(this, cxServer, boxY + 4, 'SERVIDOR', 'micro', '#8b5cff').setOrigin(0.5, 0);
+    label(this, cxServer, boxY + 11, 'Express + Agent', 'micro', '#a8b8e8').setOrigin(0.5, 0);
+    label(this, cxServer, boxY + 18, 'personas + tools', 'micro', '#6f8bd0').setOrigin(0.5, 0);
+
+    // Caja GEMINI
+    const cxGemini = GAME_WIDTH - 62;
+    this.drawBox(g, cxGemini - 52, boxY, 104, boxH, 0xff2f6d);
+    label(this, cxGemini, boxY + 4, 'GEMINI API', 'micro', '#ff2f6d').setOrigin(0.5, 0);
+    label(this, cxGemini, boxY + 11, 'LLM + tool use', 'micro', '#a8b8e8').setOrigin(0.5, 0);
+    label(this, cxGemini, boxY + 18, 'loop hasta reply', 'micro', '#6f8bd0').setOrigin(0.5, 0);
+
+    // Flechas horizontales entre cajas
+    const midY = boxY + boxH / 2;
+    this.drawArrow(g, cxClient + 50, midY, cxServer - 55, midY, 0x3fe0d0);
+    label(this, (cxClient + 50 + cxServer - 55) / 2, midY - 8, 'POST /api/agent/chat', 'micro', '#3fe0d0').setOrigin(0.5, 1);
+    label(this, (cxClient + 50 + cxServer - 55) / 2, midY - 1, 'msg + snapshot', 'micro', '#6f8bd0').setOrigin(0.5, 1);
+
+    this.drawArrow(g, cxServer + 55, midY - 3, cxGemini - 53, midY - 3, 0x8b5cff);
+    this.drawArrow(g, cxGemini - 53, midY + 4, cxServer + 55, midY + 4, 0xff2f6d);
+    label(this, (cxServer + 55 + cxGemini - 53) / 2, midY - 10, 'prompt', 'micro', '#8b5cff').setOrigin(0.5, 1);
+    label(this, (cxServer + 55 + cxGemini - 53) / 2, midY + 5, 'reply + effects', 'micro', '#ff2f6d').setOrigin(0.5, 0);
+
+    // Servidor → Cliente (flecha de retorno)
+    const returnY = boxY + boxH + 8;
+    g.lineStyle(1, 0xffb347, 0.9);
+    g.beginPath();
+    g.moveTo(cxServer - 54, boxY + boxH);
+    g.lineTo(cxServer - 54, returnY);
+    g.lineTo(cxClient + 2, returnY);
+    g.lineTo(cxClient + 2, boxY + boxH);
+    g.strokePath();
+    g.fillStyle(0xffb347, 0.9);
+    g.fillTriangle(cxClient + 2, boxY + boxH, cxClient - 3, boxY + boxH + 5, cxClient + 7, boxY + boxH + 5);
+    label(this, (cxClient + cxServer) / 2, returnY - 1, '{ reply, effects[], toolTrace }', 'micro', '#ffb347').setOrigin(0.5, 1);
+
+    // ─── DOS COLUMNAS: HERRAMIENTAS (izq) + DÓNDE SE USA (der) ──────────────
+    const colY = returnY + 10;
+    const colLeft = 12;
+    const colRight = GAME_WIDTH / 2 + 8;
+    const lineH = 9; // espacio entre líneas: 7px de fuente + 2px de margen
+
+    // Separador vertical entre columnas
+    g.lineStyle(1, PALETTE.neonViolet, 0.3);
+    g.beginPath();
+    g.moveTo(GAME_WIDTH / 2 + 2, colY);
+    g.lineTo(GAME_WIDTH / 2 + 2, GAME_HEIGHT - 38);
+    g.strokePath();
+
+    // ── Columna izquierda: Herramientas ──
+    label(this, colLeft, colY, 'HERRAMIENTAS DEL AGENTE', 'micro', '#ff2f6d');
+
+    const herramientas = [
+      'consultar_estado_jugador',
+      'recuperar_fragmento_memoria',
+      'otorgar_fragmento_memoria',
+      'revelar_pista',
+      'corromper_realidad',
+      'cambiar_emocion',
+      'despedirse_para_siempre',
+    ];
+
+    let ty = colY + 10;
+    for (const tool of herramientas) {
+      g.fillStyle(0xffb347, 1);
+      g.fillRect(colLeft, ty + 2, 3, 3);
+      label(this, colLeft + 6, ty, tool, 'micro', '#ffb347');
+      ty += lineH;
+    }
+
+    // ── Columna derecha: Dónde se usa ──
+    label(this, colRight, colY, '¿DÓNDE SE USA EN EL JUEGO?', 'micro', '#3fe0d0');
+
+    const usos = [
+      ['[E] cerca de NPC', 'abre diálogo'],
+      ['Agente responde', 'lore, pistas, efectos'],
+      ['effects[] aplicados', 'mundo reacciona'],
+      ['Sin GEMINI_API_KEY', 'fallback pregrabado'],
+      ['Sin servidor', 'respuestas locales'],
+    ];
+
+    let uy = colY + 10;
+    for (const [trigger, effect] of usos) {
+      g.fillStyle(0x3fe0d0, 1);
+      g.fillRect(colRight, uy + 2, 3, 3);
+      label(this, colRight + 6, uy, `${trigger} → ${effect}`, 'micro', '#3fe0d0');
+      uy += lineH;
+    }
+
+    // ─── GARANTÍAS DE DISEÑO ────────────────────────────────────────────────
+    const guarY = Math.max(ty, uy) + 4;
+
+    // Línea divisoria horizontal
+    g.lineStyle(1, PALETTE.neonViolet, 0.3);
+    g.beginPath();
+    g.moveTo(colLeft, guarY);
+    g.lineTo(GAME_WIDTH - colLeft, guarY);
+    g.strokePath();
+
+    label(this, colLeft, guarY + 4, 'GARANTÍAS DE DISEÑO', 'micro', '#ff2f6d');
+    label(this, colLeft + 6, guarY + 14, 'El servidor NUNCA muta GameState — solo devuelve effects[].', 'micro', '#a8b8e8');
+    label(this, colLeft + 6, guarY + 23, 'El lore canónico (shared/lore.ts) limita lo que el agente puede inventar.', 'micro', '#a8b8e8');
   }
 
   /** Dibuja una caja rectangular con borde de color y fondo semitransparente. */

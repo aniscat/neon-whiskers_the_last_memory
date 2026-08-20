@@ -169,7 +169,7 @@ export class EndingScene extends Phaser.Scene {
       .setLineSpacing(4 * RENDER_SCALE);
 
     // La cÃ¡mara entra lentamente en el edificio destruido.
-    // El zoom base ya es RENDER_SCALE; la cinemática se acerca a partir de ahí.
+    // El zoom base ya es RENDER_SCALE; la cinemï¿½tica se acerca a partir de ahï¿½.
     this.cameras.main.setZoom(RENDER_SCALE);
     this.tweens.add({
       targets: this.cameras.main,
@@ -208,9 +208,19 @@ export class EndingScene extends Phaser.Scene {
     this.cameras.main.fadeOut(1500, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       this.children.removeAll();
-      this.cameras.main.setBackgroundColor(0x000000);
-      this.cameras.main.resetFX();
-      this.cameras.main.setZoom(RENDER_SCALE).setScroll(0, 0);
+      // Matar tweens residuales del zoom de silentEarth para que no
+      // sobreescriban la cÃ¡mara tras el reset.
+      this.tweens.killAll();
+
+      const cam = this.cameras.main;
+      cam.setBackgroundColor(0x000000);
+      cam.resetFX();
+      // resetFX solo limpia el pipeline de post-FX; el overlay del fadeOut
+      // es un efecto integrado y hay que borrarlo explÃ­citamente.
+      cam.fadeEffect.reset();
+      // Re-aplicar renderScale: establece zoom + centrado de forma robusta
+      // en vez de confiar en setScroll(0,0) manual.
+      applyRenderScale(this);
 
       // Cinco segundos exactos de negro, como pide el guion.
       this.time.delayedCall(5000, () => {
